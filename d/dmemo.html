@@ -57,7 +57,10 @@
     .folder-item:hover { background: #e2e8f0; }
     .folder-item.active { background: var(--accent); color: #fff; }
     
+    /* フォルダのドラッグ＆ドロップ時のスタイル */
     .folder-item.drag-over { background: #e2e8f0; box-shadow: inset 0 0 0 2px var(--accent); }
+    .folder-item.drag-over-top { background: #e2e8f0; box-shadow: inset 0 3px 0 var(--accent); }
+    .folder-item.drag-over-bottom { background: #e2e8f0; box-shadow: inset 0 -3px 0 var(--accent); }
     .folder-item.dragging { opacity: 0.5; }
     
     .f-toggle { width: 16px; text-align: center; font-size: 10px; color: var(--muted); cursor: pointer; display: inline-block; }
