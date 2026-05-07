@@ -1,0 +1,754 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<title>動画ブックマーク管理</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  :root {
+    --bg: #f8fafc; --card: #ffffff; --line: #e2e8f0; --text: #334155;
+    --muted: #64748b; --accent: #3b82f6; --danger: #f43f5e;
+  }
+  * { box-sizing: border-box; }
+  body { 
+    margin: 0; font-family: system-ui, -apple-system, sans-serif; 
+    background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.5;
+  }
+
+  header {
+    position: sticky; top: 0; z-index: 100;
+    background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--line); padding: 12px 20px;
+    display: flex; gap: 12px; align-items: center; flex-wrap: wrap;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+  }
+  header h1 { font-size: 18px; margin: 0; font-weight: 800; color: #1e293b; }
+  .spacer { flex: 1; }
+
+  .btn {
+    appearance: none; border: 1px solid var(--line); background: var(--card);
+    border-radius: 8px; padding: 6px 14px; font-size: 13px; font-weight: 600;
+    cursor: pointer; color: var(--text); transition: 0.2s;
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .btn:hover { background: var(--bg); border-color: #cbd5e1; }
+  .btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .btn.primary:hover { background: #2563eb; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2); }
+  .btn.warning { color: var(--danger); border-color: #fecdd3; background: #fff1f2; }
+  .btn.warning:hover { background: #ffe4e6; border-color: #fda4af; }
+
+  main { padding: 20px; max-width: 1400px; margin: 0 auto; }
+
+  .folder-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 20px;
+    min-height: 200px; /* グリッドへのドロップエリアを確保 */
+  }
+
+  /* フォルダカードの基本スタイル */
+  .folder-card {
+    background: var(--card); border: 1px solid var(--line); border-radius: 16px;
+    display: flex; flex-direction: column; box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+    transition: transform 0.2s, box-shadow 0.2s, opacity 0.2s;
+  }
+  
+  /* ドラッグ中のフォルダのスタイル */
+  .folder-card.dragging {
+    opacity: 0.6;
+    border: 2px dashed var(--accent);
+    box-shadow: 0 10px 30px rgba(59, 130, 246, 0.15);
+    transform: scale(0.98);
+    z-index: 50;
+  }
+
+  /* サブフォルダ（入れ子）のスタイル */
+  .folder-card.sub-folder {
+    margin: 6px 0; border: 1px solid #cbd5e1; box-shadow: none; background: #f8fafc; border-radius: 10px;
+  }
+  .folder-card.sub-folder .folder-head {
+    padding: 8px 12px; background: transparent; border-bottom: 1px dashed var(--line); border-radius: 0;
+  }
+  .folder-card.sub-folder .folder-title { font-size: 13px; font-weight: 700; color: #475569; }
+
+  .folder-head {
+    padding: 14px 16px; border-bottom: 1px solid var(--line);
+    display: flex; align-items: center; gap: 6px;
+    background: #fafbfc; border-radius: 16px 16px 0 0;
+    cursor: grab; /* ドラッグ可能であることを示す */
+    transition: background 0.2s;
+  }
+  .folder-head:active { cursor: grabbing; }
+  .folder-head:hover { background: #f1f5f9; }
+  
+  .folder-icon { font-size: 18px; margin-right: 4px; pointer-events: none; }
+  .folder-title { font-weight: 800; flex: 1; font-size: 15px; color: #1e293b; pointer-events: none; }
+  .folder-count { font-size: 11px; color: var(--muted); background: var(--line); padding: 2px 8px; border-radius: 999px; margin-right: 4px; pointer-events: none; }
+  
+  /* ★ 折りたたみボタンのスタイル追加 */
+  .folder-card.collapsed .item-list { display: none !important; }
+  .folder-card.collapsed .toggle-collapse { transform: rotate(-90deg); }
+  .toggle-collapse { 
+    transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1); 
+    font-size: 10px; width: 24px; height: 24px; 
+    display: flex; align-items: center; justify-content: center;
+    color: #64748b;
+  }
+  .toggle-collapse:hover { background: #e2e8f0; color: #1e293b; }
+
+  .f-ctrl-btn { background: transparent; border: none; cursor: pointer; padding: 4px; border-radius: 4px; transition: 0.2s; font-size: 12px; }
+  .f-ctrl-btn:hover { background: #e2e8f0; color: var(--accent); }
+  .f-ctrl-btn.del { color: var(--muted); }
+  .f-ctrl-btn.del:hover { background: #ffe4e6; color: var(--danger); }
+
+  .item-list { min-height: 40px; padding: 10px; display: flex; flex-direction: column; gap: 6px; }
+
+  /* ドロップエリアのハイライト */
+  .item-list.drag-over {
+    background: #f0f7ff;
+    border-radius: 8px;
+    box-shadow: inset 0 0 0 2px var(--accent);
+  }
+
+  .video-item {
+    display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: var(--card);
+    border: 1px solid var(--line); border-radius: 10px; cursor: grab; transition: border 0.2s, box-shadow 0.2s;
+  }
+  .video-item:hover { border-color: var(--accent); box-shadow: 0 2px 8px rgba(0,0,0,0.05); z-index: 10;}
+  .video-item:active { cursor: grabbing; }
+  .video-item.dragging { opacity: 0.4; border-style: dashed; }
+
+  .v-title { flex: 1; font-weight: 600; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
+  .v-edit { opacity: 0; color: var(--muted); cursor: pointer; padding: 4px; border-radius: 4px; }
+  .video-item:hover .v-edit { opacity: 1; }
+  .v-edit:hover { background: var(--line); color: var(--accent); }
+
+  dialog {
+    border: 0; border-radius: 16px; padding: 0; width: 90%; max-width: 450px;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+  }
+  dialog::backdrop { background: rgba(15, 23, 42, 0.5); backdrop-filter: blur(4px); }
+  .dlg-content { padding: 24px; }
+  .dlg-content h3 { margin: 0 0 20px 0; font-size: 18px; font-weight: 800; }
+  
+  .field { margin-bottom: 16px; }
+  .field label { display: block; font-size: 12px; font-weight: 700; color: var(--muted); margin-bottom: 6px; }
+  .field input, .field select {
+    width: 100%; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px;
+    font-size: 14px; background: var(--bg); transition: 0.2s;
+  }
+  .field input:focus { outline: none; border-color: var(--accent); background: #fff; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }
+  .dlg-btns { display: flex; gap: 10px; justify-content: flex-end; margin-top: 24px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🎬 動画ブックマーク</h1>
+  <div class="spacer"></div>
+  <div class="toolbar">
+    <button class="btn warning" id="recoverBtn" title="消えてしまった過去のデータを復元します">🛠 旧データ復元</button>
+    <button class="btn" id="addFolderBtn">📂 フォルダ追加</button>
+    <button class="btn primary" id="addVideoBtn">＋ 動画を追加</button>
+  </div>
+</header>
+
+<main>
+  <div class="folder-grid" id="folderGrid"></div>
+</main>
+
+<dialog id="editModal">
+  <div class="dlg-content">
+    <h3 id="modalTitle">動画を登録</h3>
+    <div class="field">
+      <label>URL (YouTube動画 または 再生リスト)</label>
+      <input type="text" id="inUrl" placeholder="https://www.youtube.com/...">
+    </div>
+    <div class="field">
+      <label>タイトル <span style="font-weight:normal; font-size:10px;">(空欄の場合は自動取得します)</span></label>
+      <input type="text" id="inTitle" placeholder="動画のタイトル">
+    </div>
+    <div class="field">
+      <label>アイコン (動画: 📺 / リスト: 🗃️ など)</label>
+      <input type="text" id="inIcon" value="📺">
+    </div>
+    <div class="field">
+      <label>保存先フォルダ</label>
+      <select id="inFolder"></select>
+    </div>
+    <div class="dlg-btns">
+      <button class="btn" id="btnDel" style="color:var(--danger); border-color:var(--danger); margin-right:auto;">削除</button>
+      <button class="btn" id="btnCancel">キャンセル</button>
+      <button class="btn primary" id="btnSave">保存する</button>
+    </div>
+  </div>
+</dialog>
+
+<script>
+const KEY = 'D_VID_V2';
+
+function loadV2(){
+  let d = { folders:[], root:{ items:[], collapsed: false } };
+  try { const s = localStorage.getItem(KEY); if(s) d = JSON.parse(s); } catch(e){}
+  return d;
+}
+function saveV2(d){ 
+  localStorage.setItem(KEY, JSON.stringify(d)); 
+  notifyParent();
+}
+function notifyParent() {
+  try { window.parent.postMessage({ type: 'D_VIDEOS_UPDATED' }, '*'); } catch(e){}
+}
+
+// フォルダを階層構造（ツリー）に変換
+function buildFolderTree(folders) {
+  const map = {};
+  const roots = [];
+  folders.forEach(f => map[f.id] = { ...f, children: [] });
+  folders.forEach(f => {
+    if (f.parentId && map[f.parentId]) map[f.parentId].children.push(map[f.id]);
+    else roots.push(map[f.id]);
+  });
+  return roots;
+}
+
+const grid = document.getElementById('folderGrid');
+let draggedItemEl = null;
+
+function render(){
+  const data = loadV2();
+  grid.innerHTML = '';
+  
+  // 未分類フォルダ
+  grid.appendChild(createFolderCard('root', '未分類', data.root.items || [], '📦', data.root, 0));
+  
+  // カスタムフォルダ（ツリー描画）
+  const tree = buildFolderTree(data.folders);
+  tree.forEach(node => { 
+    grid.appendChild(createFolderCard(node.id, node.name, node.items || [], '📂', node, 0)); 
+  });
+}
+
+// ★ フォルダの開閉状態を切り替えるグローバル関数
+window.toggleFolder = function(e, id, forceState = null) {
+  if (e) e.stopPropagation();
+  const card = document.querySelector(`.folder-card[data-id="${id}"]`);
+  if (card) {
+    let willCollapse = !card.classList.contains('collapsed');
+    if (forceState !== null) willCollapse = forceState;
+    
+    if (willCollapse) card.classList.add('collapsed');
+    else card.classList.remove('collapsed');
+
+    const data = loadV2();
+    if (id === 'root') {
+      if (!data.root) data.root = {items:[]};
+      data.root.collapsed = willCollapse;
+    } else {
+      const f = data.folders.find(x => x.id === id);
+      if (f) f.collapsed = willCollapse;
+    }
+    saveV2(data);
+  }
+};
+
+function createFolderCard(id, name, items, iconEmoji, nodeObj, depth){
+  const card = document.createElement('div');
+  card.className = 'folder-card' + (depth > 0 ? ' sub-folder' : '');
+  card.dataset.id = id;
+
+  // ★ 状態を読み取って最初から反映
+  const isCollapsed = nodeObj ? !!nodeObj.collapsed : false;
+  if (isCollapsed) card.classList.add('collapsed');
+
+  const btnsHTML = id !== 'root' ? `
+    <button class="f-ctrl-btn toggle-collapse" onclick="toggleFolder(event, '${id}')" title="開閉">▼</button>
+    <button class="f-ctrl-btn" onclick="addSubFolder('${id}')" title="サブフォルダを追加">➕📂</button>
+    <button class="f-ctrl-btn" onclick="renameFolder('${id}', '${name}')" title="名前を変更">✎</button>
+    <button class="f-ctrl-btn del" onclick="deleteFolder('${id}', '${name}')" title="フォルダを削除">🗑️</button>
+  ` : `
+    <button class="f-ctrl-btn toggle-collapse" onclick="toggleFolder(event, 'root')" title="開閉">▼</button>
+  `;
+
+  card.innerHTML = `
+    <div class="folder-head">
+      <span class="folder-icon">${iconEmoji}</span>
+      <span class="folder-title">${name}</span>
+      <span class="folder-count">${items.length}</span>
+      ${btnsHTML}
+    </div>
+    <div class="item-list" data-folder="${id}"></div>
+  `;
+
+  // ★ ドラッグ時に折りたたまれたフォルダの上で少し待つと自動で開く機能
+  let expandTimer = null;
+  card.addEventListener('dragenter', (e) => {
+     if (card.classList.contains('collapsed') && draggedItemEl && !card.contains(draggedItemEl)) {
+         if (!expandTimer) {
+             expandTimer = setTimeout(() => {
+                 window.toggleFolder(null, id, false); // 強制展開
+             }, 800); // 0.8秒ホバーで開く
+         }
+     }
+  });
+  card.addEventListener('dragleave', () => {
+     if (expandTimer) { clearTimeout(expandTimer); expandTimer = null; }
+  });
+  card.addEventListener('drop', () => {
+     if (expandTimer) { clearTimeout(expandTimer); expandTimer = null; }
+  });
+
+  // ★ フォルダ自体のドラッグ＆ドロップ設定（root以外）
+  if (id !== 'root') {
+    card.draggable = true;
+    card.ondragstart = (e) => {
+      if (e.target !== card) return; // 中の要素がドラッグされた場合は無視
+      draggedItemEl = card;
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', id);
+      e.stopPropagation(); // 親フォルダのドラッグ発火を防ぐ
+      setTimeout(() => card.classList.add('dragging'), 0);
+    };
+    card.ondragend = (e) => {
+      if (e.target !== card) return;
+      card.classList.remove('dragging');
+      draggedItemEl = null;
+      document.querySelectorAll('.drag-over').forEach(c => c.classList.remove('drag-over'));
+      saveOrderFromDOM();
+      e.stopPropagation();
+    };
+  }
+
+  const list = card.querySelector('.item-list');
+  
+  // 中身の動画アイテム
+  items.forEach(v => {
+    const el = document.createElement('div');
+    el.className = 'video-item';
+    el.draggable = true;
+    el.dataset.id = v.id;
+    el.innerHTML = `
+      <span>${v.icon || '📺'}</span>
+      <span class="v-title">${v.title || '(無題)'}</span>
+      <span class="v-edit" onclick="openEdit('${v.id}')">✎</span>
+    `;
+    
+    el.ondragstart = (e) => {
+      draggedItemEl = el;
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', v.id);
+      e.stopPropagation();
+      setTimeout(() => el.classList.add('dragging'), 0);
+    };
+    
+    el.ondragend = (e) => {
+      el.classList.remove('dragging');
+      draggedItemEl = null;
+      document.querySelectorAll('.drag-over').forEach(c => c.classList.remove('drag-over'));
+      saveOrderFromDOM();
+      e.stopPropagation();
+    };
+    
+    list.appendChild(el);
+  });
+
+  // サブフォルダの再帰的描画
+  if (nodeObj && nodeObj.children && nodeObj.children.length > 0) {
+    nodeObj.children.forEach(child => {
+      list.appendChild(createFolderCard(child.id, child.name, child.items || [], '📁', child, depth + 1));
+    });
+  }
+
+  // ★ フォルダ内リスト領域へのドロップ処理
+  list.ondragover = (e) => {
+    e.preventDefault();
+    e.stopPropagation(); 
+    if (!draggedItemEl) return;
+    
+    // 自分自身や、自分の子孫フォルダの中にはドロップできない（無限ループ防止）
+    if (draggedItemEl === card || draggedItemEl.contains(list)) return;
+    
+    // root（未分類）フォルダの中にフォルダは入れられない仕様
+    if (id === 'root' && draggedItemEl.classList.contains('folder-card')) return;
+
+    list.classList.add('drag-over');
+
+    const afterElement = getDragAfterElement(list, e.clientY);
+    if (afterElement == null) {
+      list.appendChild(draggedItemEl);
+    } else {
+      list.insertBefore(draggedItemEl, afterElement);
+    }
+  };
+
+  list.ondragleave = (e) => {
+    e.stopPropagation();
+    list.classList.remove('drag-over');
+  };
+  
+  list.ondrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    list.classList.remove('drag-over');
+  };
+
+  return card;
+}
+
+// リスト内のどこに挿入すべきかを計算
+function getDragAfterElement(container, y) {
+  // 動画アイテムとサブフォルダの両方を判定対象にする
+  const draggableElements = [...container.querySelectorAll(':scope > .video-item:not(.dragging), :scope > .folder-card:not(.dragging)')];
+  return draggableElements.reduce((closest, child) => {
+    const box = child.getBoundingClientRect();
+    const offset = y - box.top - box.height / 2;
+    if (offset < 0 && offset > closest.offset) {
+      return { offset: offset, element: child };
+    } else {
+      return closest;
+    }
+  }, { offset: Number.NEGATIVE_INFINITY }).element;
+}
+
+// ★ トップレベルのグリッド（大枠）へのドロップ処理
+grid.ondragover = (e) => {
+  e.preventDefault();
+  if (!draggedItemEl) return;
+  // フォルダのみトップレベルへ移動可能（動画は必ずフォルダ内に入る）
+  if (draggedItemEl.classList.contains('video-item')) return;
+  if (draggedItemEl.contains(grid)) return;
+
+  const target = e.target.closest('.folder-card');
+  // rootの前には置けない
+  if (target && target.dataset.id === 'root') return;
+
+  if (target && target.parentElement === grid && target !== draggedItemEl) {
+    const box = target.getBoundingClientRect();
+    // グリッドレイアウトなので大まかにマウス位置の左右で前・後ろを判定
+    if (e.clientX < box.left + box.width / 2) {
+      grid.insertBefore(draggedItemEl, target);
+    } else {
+      if (target.nextSibling) {
+        grid.insertBefore(draggedItemEl, target.nextSibling);
+      } else {
+        grid.appendChild(draggedItemEl);
+      }
+    }
+  } else if (e.target === grid) {
+    grid.appendChild(draggedItemEl);
+  }
+};
+
+
+// ★ 画面のDOMツリー構造からデータを完全再構築して保存する最強ロジック
+function saveOrderFromDOM() {
+  const oldData = loadV2();
+  
+  // 既存のすべてのデータをMapに退避
+  const allVideos = new Map();
+  oldData.root.items.forEach(i => allVideos.set(i.id, i));
+  oldData.folders.forEach(f => f.items.forEach(i => allVideos.set(i.id, i)));
+  
+  const allFolders = new Map();
+  oldData.folders.forEach(f => allFolders.set(f.id, { ...f, parentId: null, items: [] }));
+
+  // ★ 状態をそのまま引き継いで保存
+  const newData = { root: { items: [], collapsed: !!oldData.root.collapsed }, folders: [] };
+
+  // 再帰的にDOMリストをパースする関数
+  function parseItemList(listEl, currentFolderId) {
+    const children = Array.from(listEl.children);
+    children.forEach(child => {
+      const id = child.dataset.id;
+      if (child.classList.contains('video-item')) {
+        const video = allVideos.get(id);
+        if (video) {
+          if (currentFolderId === 'root') {
+            newData.root.items.push(video);
+          } else {
+            const f = allFolders.get(currentFolderId);
+            if (f) f.items.push(video);
+          }
+        }
+      } else if (child.classList.contains('folder-card')) {
+        const folder = allFolders.get(id);
+        if (folder) {
+          // 所属しているフォルダのIDを親に設定
+          folder.parentId = currentFolderId === 'root' ? null : currentFolderId;
+          newData.folders.push(folder);
+          
+          // さらに奥のサブ階層をパース
+          const subList = child.querySelector(':scope > .item-list');
+          if (subList) parseItemList(subList, id);
+        }
+      }
+    });
+  }
+
+  // 1. 未分類(root)の中身をパース
+  const rootList = document.querySelector('.folder-card[data-id="root"] > .item-list');
+  if (rootList) parseItemList(rootList, 'root');
+
+  // 2. その他のトップレベルフォルダをパース
+  const topFolders = document.querySelectorAll('#folderGrid > .folder-card:not([data-id="root"])');
+  topFolders.forEach(topEl => {
+    const id = topEl.dataset.id;
+    const folder = allFolders.get(id);
+    if (folder) {
+      folder.parentId = null; // トップレベルなので親なし
+      newData.folders.push(folder);
+      
+      const subList = topEl.querySelector(':scope > .item-list');
+      if (subList) parseItemList(subList, id);
+    }
+  });
+
+  saveV2(newData);
+  render();
+}
+
+// フォルダ追加系
+document.getElementById('addFolderBtn').onclick = () => {
+  const n = prompt('新しいトップフォルダ名を入力してください');
+  if(!n) return;
+  const data = loadV2();
+  data.folders.push({ id:'f_'+Date.now(), name:n, parentId: null, items:[], collapsed: false });
+  saveV2(data); render();
+};
+
+window.addSubFolder = function(parentId) {
+  const n = prompt('サブフォルダ名を入力してください');
+  if(!n) return;
+  const data = loadV2();
+  data.folders.push({ id:'f_'+Date.now(), name:n, parentId: parentId, items:[], collapsed: false });
+  saveV2(data); render();
+};
+
+window.renameFolder = function(id, oldName) {
+  const newName = prompt('新しいフォルダ名を入力してください', oldName);
+  if (newName && newName.trim() && newName !== oldName) {
+    const data = loadV2();
+    const f = data.folders.find(x => x.id === id);
+    if (f) { f.name = newName.trim(); saveV2(data); render(); }
+  }
+};
+
+window.deleteFolder = function(id, name) {
+  if (confirm(`フォルダ「${name}」を削除しますか？\n※中に入っている動画やサブフォルダの動画はすべて「未分類」へ移動します。`)) {
+    const data = loadV2();
+    
+    // 削除対象のサブツリーに含まれる全フォルダIDを収集
+    const toDeleteIds = new Set([id]);
+    let added = true;
+    while(added) {
+      added = false;
+      data.folders.forEach(f => {
+        if(f.parentId && toDeleteIds.has(f.parentId) && !toDeleteIds.has(f.id)) {
+          toDeleteIds.add(f.id); added = true;
+        }
+      });
+    }
+
+    // アイテムを未分類へ吸い上げ
+    data.folders.forEach(f => {
+      if (toDeleteIds.has(f.id) && f.items && f.items.length > 0) {
+        data.root.items.push(...f.items);
+      }
+    });
+
+    // フォルダ削除
+    data.folders = data.folders.filter(f => !toDeleteIds.has(f.id));
+    saveV2(data); render();
+  }
+};
+
+// --- 動画登録・編集 ---
+let editingId = null;
+const modal = document.getElementById('editModal');
+
+function updateFolderSelectOptions(selectEl, data) {
+  selectEl.innerHTML = '<option value="root">未分類</option>';
+  function buildOptions(nodes, depth, prefix) {
+    nodes.forEach(n => {
+      const indent = '　'.repeat(depth);
+      const opt = document.createElement('option');
+      opt.value = n.id;
+      opt.textContent = indent + (depth > 0 ? '└ ' : '') + n.name;
+      selectEl.appendChild(opt);
+      if (n.children.length > 0) buildOptions(n.children, depth + 1, prefix + n.name + ' > ');
+    });
+  }
+  buildOptions(buildFolderTree(data.folders), 0, '');
+}
+
+window.openEdit = function(id = null){
+  editingId = id;
+  const data = loadV2();
+  const sel = document.getElementById('inFolder');
+  updateFolderSelectOptions(sel, data);
+
+  if(id){
+    document.getElementById('modalTitle').textContent = '動画を編集';
+    document.getElementById('btnDel').style.display = 'block';
+    const loc = findVideo(data, id);
+    if(loc){
+      document.getElementById('inTitle').value = loc.item.title;
+      document.getElementById('inUrl').value = loc.item.url;
+      document.getElementById('inIcon').value = loc.item.icon || '📺';
+      document.getElementById('inFolder').value = loc.from;
+    }
+  } else {
+    document.getElementById('modalTitle').textContent = '動画を登録';
+    document.getElementById('btnDel').style.display = 'none';
+    document.getElementById('inTitle').value = '';
+    document.getElementById('inUrl').value = '';
+    document.getElementById('inIcon').value = '📺';
+  }
+  modal.showModal();
+};
+
+document.getElementById('btnSave').onclick = async () => {
+  let title = document.getElementById('inTitle').value.trim();
+  const url = document.getElementById('inUrl').value.trim();
+  let icon = document.getElementById('inIcon').value.trim();
+  const folder = document.getElementById('inFolder').value;
+  const btnSave = document.getElementById('btnSave');
+  
+  if(!url) return alert('URLを入力してください');
+
+  const isPlaylist = url.includes('list=');
+  if (icon === '' || icon === '📺' || icon === '🎞️') {
+    icon = isPlaylist ? '🗃️' : '📺';
+  }
+
+  if (!title) {
+    btnSave.textContent = 'タイトル取得中...';
+    btnSave.disabled = true;
+
+    try {
+      if (url.includes('v=') || url.includes('youtu.be/')) {
+        const res = await fetch('https://noembed.com/embed?url=' + encodeURIComponent(url));
+        const json = await res.json();
+        if (json.title) title = json.title;
+        else throw new Error('noembed failed');
+      } else {
+        throw new Error('playlist url'); 
+      }
+    } catch (e) {
+      try {
+        const res = await fetch('https://api.microlink.io/?url=' + encodeURIComponent(url));
+        const json = await res.json();
+        if (json.status === 'success' && json.data && json.data.title) {
+          title = json.data.title.replace(/ - YouTube/gi, '').trim();
+        } else {
+          throw new Error('microlink failed');
+        }
+      } catch (err) {
+        try {
+          const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
+          const res = await fetch(proxyUrl);
+          const html = await res.text();
+          
+          const decodeHTML = (h) => {
+            const txt = document.createElement('textarea');
+            txt.innerHTML = h; return txt.value;
+          };
+
+          const ogMatch = html.match(/<meta\s+(?:property|name)="og:title"\s+content="([^"]+)"/i);
+          const titleMatch = html.match(/<title>(.*?)<\/title>/i);
+
+          if (ogMatch && ogMatch[1]) {
+            title = decodeHTML(ogMatch[1]);
+          } else if (titleMatch && titleMatch[1]) {
+            title = decodeHTML(titleMatch[1].replace(/ - YouTube/gi, '').trim());
+          }
+          
+          if (!title || title === 'YouTube' || title === 'Before you continue to YouTube') {
+            title = isPlaylist ? 'YouTube 再生リスト' : '無題の動画';
+          }
+        } catch (err2) {
+          title = isPlaylist ? 'YouTube 再生リスト' : '無題の動画';
+        }
+      }
+    }
+    btnSave.textContent = '保存する';
+    btnSave.disabled = false;
+  }
+
+  const data = loadV2();
+  if(editingId) removeVideo(data, editingId);
+  
+  const newItem = { id: editingId || 'v_'+Date.now(), title, url, icon };
+  if(folder === 'root') data.root.items.push(newItem);
+  else {
+    const f = data.folders.find(x=>x.id===folder);
+    if(f) f.items.push(newItem);
+  }
+
+  saveV2(data); modal.close(); render();
+};
+
+document.getElementById('btnDel').onclick = () => {
+  if(!confirm('削除してよろしいですか？')) return;
+  const data = loadV2();
+  removeVideo(data, editingId);
+  saveV2(data); modal.close(); render();
+};
+
+document.getElementById('btnCancel').onclick = () => modal.close();
+document.getElementById('addVideoBtn').onclick = () => openEdit();
+
+function findVideo(data, vid){
+  const rIdx = data.root.items.findIndex(x=>x.id===vid);
+  if(rIdx>=0) return { item:data.root.items[rIdx], from:'root' };
+  for(const f of data.folders){
+    const i = (f.items||[]).findIndex(x=>x.id===vid);
+    if(i>=0) return { item:f.items[i], from:f.id };
+  }
+  return null;
+}
+function removeVideo(data, vid){
+  const rIdx = data.root.items.findIndex(x=>x.id===vid);
+  if(rIdx>=0) data.root.items.splice(rIdx,1);
+  else {
+    for(const f of data.folders){
+      const i = (f.items||[]).findIndex(x=>x.id===vid);
+      if(i>=0) { f.items.splice(i,1); break; }
+    }
+  }
+}
+
+// 復元ロジック
+document.getElementById('recoverBtn').onclick = () => {
+  const data = loadV2();
+  let recoveredCount = 0;
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    if (k === KEY) continue;
+    try {
+      const val = JSON.parse(localStorage.getItem(k));
+      if (Array.isArray(val) && val.length > 0 && val[0].url) {
+        val.forEach(v => {
+          if (!data.root.items.find(x => x.url === v.url)) {
+            data.root.items.push({
+              id: 'v_' + Math.random().toString(36).slice(2),
+              title: v.title || '(無題)',
+              url: v.url,
+              icon: v.icon || '📺'
+            });
+            recoveredCount++;
+          }
+        });
+      }
+    } catch(e) {}
+  }
+  if (recoveredCount > 0) {
+    saveV2(data); render();
+    alert(`${recoveredCount}件の過去の動画ブックマークを発見し、「未分類」フォルダに復元しました！`);
+  } else {
+    alert('復元できる過去のデータが見つかりませんでした。');
+  }
+};
+
+render();
+</script>
+</body>
+</html>

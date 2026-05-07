@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Dフレーム</title>
+<link rel="stylesheet" href="./css/common-scroll.css">
+<link rel="stylesheet" href="./css/dframe.css">
+</head>
+<body>
+  <header>
+    <nav class="tabs" role="tablist" aria-label="Dフレーム機能">
+      <button class="tab-btn" id="tab-calendar" role="tab" data-tab="calendar" aria-selected="true" title="カレンダー（Calendar）" aria-label="カレンダー">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <rect x="3" y="4" width="18" height="18" rx="2"/>
+          <path d="M16 2v4M8 2v4M3 10h18"/>
+          <rect x="7" y="13" width="4" height="4" rx="1"/>
+          <rect x="13" y="13" width="4" height="4" rx="1"/>
+        </svg>
+      </button>
+      <button class="tab-btn" id="tab-todo" role="tab" data-tab="todo" aria-selected="false" title="TODO一括管理（Tasks）" aria-label="TODO一括管理">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <rect x="3" y="3" width="18" height="18" rx="2"/>
+          <path d="M9 12l2.5 2.5L16.5 9.5"/>
+        </svg>
+      </button>
+      <button class="tab-btn" id="tab-memo" role="tab" data-tab="memo" aria-selected="false" title="メモ（Notes）" aria-label="メモ">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M7 3h7l5 5v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V7a4 4 0 0 1 4-4Z"/>
+          <path d="M14 3v5h5"/>
+        </svg>
+      </button>
+      <button class="tab-btn" id="tab-goals" role="tab" data-tab="goals" aria-selected="false" title="目標進捗管理（Goals）" aria-label="目標進捗管理">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="12" cy="12" r="8"/>
+          <circle cx="12" cy="12" r="4"/>
+          <path d="M12 4V2M4 12H2M12 22v-2M22 12h-2"/>
+        </svg>
+      </button>
+      <button class="tab-btn" id="tab-journal" role="tab" data-tab="journal" aria-selected="false" title="ジャーナル（Journal）" aria-label="ジャーナル">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+          <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+        </svg>
+      </button>
+      <button class="tab-btn" id="tab-mindmap" role="tab" data-tab="mindmap" aria-selected="false" title="マインドマップ（Mind Map）" aria-label="マインドマップ">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="12" cy="6" r="3"/>
+          <circle cx="5"  cy="18" r="3"/>
+          <circle cx="19" cy="18" r="3"/>
+          <path d="M12 9v3M9 12h6M7.5 15l2.5-3M16.5 15L14 12"/>
+        </svg>
+      </button>
+    </nav>
+  </header>
+
+  <main id="panelHost" tabindex="-1" aria-live="polite">
+    <section id="panel-calendar" class="panel" data-tab="calendar" aria-labelledby="tab-calendar"></section>
+    <section id="panel-todo"     class="panel" data-tab="todo"     aria-labelledby="tab-todo"></section>
+    <section id="panel-mindmap"  class="panel" data-tab="mindmap"  aria-labelledby="tab-mindmap"></section>
+    <section id="panel-memo"     class="panel" data-tab="memo"     aria-labelledby="tab-memo"></section>
+    <section id="panel-goals"    class="panel" data-tab="goals"    aria-labelledby="tab-goals"></section>
+    <section id="panel-journal"  class="panel" data-tab="journal"  aria-labelledby="tab-journal"></section>
+
+    <section id="panel-web" class="panel" data-tab="web">
+      <div class="card"><iframe id="webview" title="D内Web表示"></iframe></div>
+    </section>
+  </main>
+
+<script src="./js/dframe.js"></script>
+</body>
+</html>

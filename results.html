@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>CSE結果専用フレーム（常駐＋内側ビューア）</title>
+  <style>
+    html,body { height:100%; margin:0; }
+    #root { position:relative; height:100%; }
+    #resultsWrap { position:absolute; inset:0; overflow:auto; background:#fff; }
+    #viewerWrap  { position:absolute; inset:0; display:none; background:#fff; }
+    #viewer { width:100%; height:100%; border:0; background:#fff; }
+    #backBtn {
+      position:absolute; top:10px; left:10px; z-index:10;
+      padding:6px 10px; border:0; border-radius:6px;
+      color:#fff; background:#2b6cb0; cursor:pointer;
+    }
+    .note { font:14px/1.6 system-ui,-apple-system,Segoe UI,Roboto,sans-serif; color:#666; padding:16px; }
+  </style>
+
+  <script>
+    let ready = false;
+
+    // CSE読み込み後に呼ばれる
+    window.__gcse = {
+      callback: function () {
+        if (!(window.google && window.google.search && window.google.search.cse)) return;
+        // 結果のみを resultsWrap に描画（検索バーは出さない）
+        window.google.search.cse.element.render({
+          div: 'cse-results',
+          tag: 'searchresults-only',
+          gname: 'results'
+        });
+        ready = true;
+        setupLinkHijack(); // 初期化後にリンクのフックを準備
+        console.log('[CSE iframe] ready');
+      }
+    };
+
+    // 親からの検索指示（常に受け取れる：このページは遷移しない）
+    window.addEventListener('message', function (ev) {
+      const data = ev.data || {};
+      if (data.type === 'search' && typeof data.query === 'string') {
+        // 新しい検索が来たら viewer を閉じて結果リストに戻す
+        showResults();
+        if (!ready) {
+          console.warn('CSE not ready yet');
+          return;
+        }
+        const el = window.google.search.cse.element.getElement('results');
+        if (el) el.execute(data.query);
+      }
+    });
+
+    // リンクを「新しいタブ」や「このページ自体の遷移」にせず、内側viewerへ表示
+    function setupLinkHijack() {
+      const resultsWrap = document.getElementById('resultsWrap');
+
+      const openInViewer = (href) => {
+        const viewerWrap = document.getElementById('viewerWrap');
+        const viewer = document.getElementById('viewer');
+        viewer.src = href;
+        viewerWrap.style.display = 'block';
+      };
+
+      // 結果DOMは検索実行のたびに変わるので MutationObserver で監視
+      const mo = new MutationObserver(() => {
+        // CSEが生成した a に click ハンドラを差し込む
+        resultsWrap.querySelectorAll('a').forEach(a => {
+          if (a.__hijacked) return; // 二重付与防止
+          a.__hijacked = true;
+          a.addEventListener('click', (e) => {
+            const href = a.getAttribute('href');
+            if (!href || href.startsWith('javascript:')) return;
+            e.preventDefault();
+            openInViewer(href);        // ← 内側 iframe に表示
+          }, { capture: true });
+          // 念のため target を消しておく（_blankなどを無効化）
+          if (a.hasAttribute('target')) a.removeAttribute('target');
+        });
+      });
+
+      mo.observe(resultsWrap, { childList: true, subtree: true });
+    }
+
+    function showResults() {
+      document.getElementById('viewerWrap').style.display = 'none';
+      // viewer の履歴を切りたい場合は src を空に戻す（任意）
+      const viewer = document.getElementById('viewer');
+      try { viewer.contentWindow.location.replace('about:blank'); } catch(_) {}
+      viewer.removeAttribute('src');
+    }
+
+    function backFromViewer() {
+      showResults();
+    }
+  </script>
+
+  <!-- ★あなたの cx を設定（必須） -->
+  <script async src="https://cse.google.com/cse.js?cx=96d88e787f9fc4659"></script>
+  <link rel="stylesheet" href="./css/common-scroll.css">
+</head>
+<body>
+  <div id="root">
+    <!-- 検索結果リスト -->
+    <div id="resultsWrap">
+      <div id="cse-results">
+        <div class="note">Cフレームの検索バーから検索すると、ここに結果が表示されます。</div>
+      </div>
+    </div>
+
+    <!-- クリック先ページを内側iframeで表示（results.html自体は遷移しない） -->
+    <div id="viewerWrap">
+      <button id="backBtn" onclick="backFromViewer()">← 検索結果へ戻る</button>
+      <iframe id="viewer" title="Result Page Viewer"></iframe>
+    </div>
+  </div>
+</body>
+</html>

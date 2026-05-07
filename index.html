@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+
+<html lang="ja">
+<head>
+<meta charset="utf-8"/>
+<title>DayBase</title>
+<link rel="icon" type="image/png" href="favicon.png">
+<meta content="width=device-width, initial-scale=1" name="viewport"/>
+
+<link href="./css/05-data-popover.css" rel="stylesheet"/>
+<link href="./css/04-e-frame.css" rel="stylesheet"/>
+<link href="./css/03-c-d-frame.css" rel="stylesheet"/>
+<link href="./css/02-a-b-frame.css" rel="stylesheet"/>
+<link href="./css/01-layout.css" rel="stylesheet"/>
+<link href="./css/common-scroll.css" rel="stylesheet"/>
+</head>
+<body>
+<!-- 左（A/B） -->
+<div class="sidebar-left">
+<!-- Aフレーム：時計／動画 切替 -->
+<div class="frame a-frame" id="AFrame">
+<div class="a-tabs">
+<button class="a-tab active" id="aTabClock" title="時計">🕒</button>
+<button class="a-tab" id="aTabVideo" title="動画">▶︎</button>
+<div class="a-spacer"></div>
+<!-- YouTube コントロール（YouTube時のみ表示/有効化） -->
+<div class="player-ctrls" id="ytCtrls">
+<!-- 前へ（左向き） -->
+<button aria-label="前へ" class="ctrl-btn" id="ytPrev" title="前へ" type="button">
+<svg height="14" viewbox="0 0 24 24" width="14"><path d="M6 5h2v14H6V5zm3 7 9 7V5l-9 7z" fill="currentColor"></path></svg>
+</button>
+<!-- 次へ（右向き） -->
+<button aria-label="次へ" class="ctrl-btn" id="ytNext" title="次へ" type="button">
+<svg height="14" viewbox="0 0 24 24" width="14"><path d="M18 5h-2v14h2V5zm-3 7-9-7v14l9-7z" fill="currentColor"></path></svg>
+</button>
+<button aria-label="ループ" class="ctrl-btn" id="ytLoop" title="ループ OFF" type="button">↻</button>
+<button aria-label="再読込" class="ctrl-btn" id="ytReload" title="再読込" type="button">⟳</button>
+</div>
+<!-- 動画URLフォーム（動画タブ時のみ表示） -->
+<form autocomplete="off" class="a-vid-form" id="aVidForm">
+<input id="aVidUrl" placeholder="動画URL" type="text"/>
+<button title="表示" type="submit">表示</button>
+</form>
+</div>
+<div class="a-panels">
+<!-- 時計パネル -->
+<div class="a-panel" id="panelClock">
+<div class="a-panel-inner">
+<div class="clock">
+<svg aria-label="Analog Clock" class="clock-svg" viewbox="0 0 100 100">
+<circle cx="50" cy="50" fill="#222831" r="48" stroke="#393E46" stroke-width="1.5"></circle>
+<g id="hour-ticks">
+<g transform="translate(50,50)">
+<rect fill="#EEEEEE" height="7" rx="1" width="2" x="-1" y="-44"></rect>
+<g></g> </g>
+</g>
+<g id="minute-ticks"></g>
+<g class="hands" transform="translate(50,50)">
+<rect fill="#EEEEEE" height="28" id="hour-hand" rx="1.5" width="3" x="-1.5" y="-25"></rect>
+<rect fill="#00ADB5" height="40" id="minute-hand" rx="1" width="2" x="-1" y="-35"></rect>
+<rect fill="#FF2E63" height="46" id="second-hand" rx="0.5" width="1" x="-0.5" y="-38"></rect>
+<circle cx="0" cy="0" fill="#222831" r="3" stroke="#00ADB5" stroke-width="1.5"></circle>
+</g>
+</svg>
+</div>
+</div>
+</div>
+<!-- 動画パネル -->
+<div class="a-panel" hidden="" id="panelVideo">
+<div class="video-wrap" id="aVideoWrap">
+<div class="video-box" id="aVideoBox">
+<iframe allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen="" id="aVideoIframe" referrerpolicy="strict-origin-when-cross-origin" title="Embedded Video"></iframe>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Bフレーム：タブ（動画ブックマーク / タイムスケジュール） -->
+<div class="frame" id="BFrame">
+<div class="b-tabs">
+<button class="b-tab" id="bTabSchedule" title="タイムスケジュール">
+<svg fill="currentColor" height="18" viewbox="0 0 16 16" width="18" xmlns="http://www.w3.org/2000/svg">
+<path d="M8 3.5a.5.5 0 0 1 .5.5v4l3 1.5a.5.5 0 0 1-.5.866L8 9V4a.5.5 0 0 1 .5-.5z"></path>
+<path d="M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16zM1 8a7 7 0 1 1 14 0A7 7 0 0 1 1 8z"></path>
+</svg>
+</button>
+<button class="b-tab active" id="bTabVideos" title="動画ブックマーク">
+<svg fill="currentColor" height="18" viewbox="0 0 16 16" width="18" xmlns="http://www.w3.org/2000/svg">
+<path d="M6 4.5v7l6-3.5-6-3.5z"></path>
+</svg>
+</button>
+</div>
+<!-- 動画ブックマーク（Bフレームの中） -->
+<div class="b-panel show" id="bPanelVideos">
+<div class="vb-head">
+<span aria-label="動画ブックマーク" title="動画ブックマーク">🎬</span>
+<strong style="font-size:13px;">動画ブックマーク</strong>
+<button class="manage-btn" id="openVideoBmManager">管理を開く</button>
+</div>
+<div class="vb-list" id="bVideoList"></div>
+</div>
+<!-- タイムスケジュール（Bフレームの中） -->
+<div class="b-panel" id="bPanelSchedule">
+<div class="timeline-wrap">
+<div class="timeline-body">
+<div class="timeline-head">
+<button class="nav-day" id="tlPrev" title="前の日">◀</button>
+<input id="tlDate" type="date"/>
+<button class="nav-day" id="tlNext" title="次の日">▶</button>
+<div class="head-spacer"></div>
+<button class="open-schedule" id="openScheduleEditor" title="予定を入力">
+<svg fill="currentColor" height="18" viewbox="0 0 16 16" width="18" xmlns="http://www.w3.org/2000/svg">
+<path d="M12.854.146a.5.5 0 0 1 .11.638l-.057.07L2.707 11H2v-.707l10.146-10.147a.5.5 0 0 1 .708 0zM11.207 2L13 3.793 12.207 4.586 10.414 2.793 11.207 2zM1 13.5V16h2.5L14.354 5.146l-2.5-2.5L1 13.5z"></path>
+</svg>
+</button>
+</div>
+<div class="timeline-grid" id="tlGrid"><!-- JSで描画 --></div>
+<!-- 通知フッター（Bフレーム下部に固定） -->
+<div class="timeline-footer" id="tlFooter">
+<span aria-hidden="true" class="bell">🔔</span>
+<input id="notifyLead" max="120" min="0" step="1" title="何分前に通知するか" type="number" value="5"/>
+<span class="unit">分前</span>
+<button aria-pressed="true" class="primary" id="notifyToggle" title="通知のオン/オフ">🔔</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- 中央（C/D） -->
+<div class="center">
+<!-- C：検索/ブックマーク -->
+<div class="frame frame-c">
+<div class="tabs">
+<button class="tab" id="tabHome" title="ホーム">
+<!-- house icon -->
+<svg fill="currentColor" height="16" viewbox="0 0 24 24" width="16" xmlns="http://www.w3.org/2000/svg">
+<path d="M12 3l9 8h-3v9h-5v-6H11v6H6v-9H3z"></path>
+</svg>
+</button>
+<button class="tab active" id="tabSearch" title="検索">
+<svg fill="currentColor" height="16" viewbox="0 0 24 24" width="16" xmlns="http://www.w3.org/2000/svg">
+<path d="M10 2a8 8 0 0 1 6.32 12.906l5.387 5.387-1.414 1.414-5.387-5.387A8 8 0 1 1 10 2zm0 2a6 6 0 1 0 0 12 6 6 0 0 0 0-12z"></path>
+</svg>
+</button>
+<button class="tab" id="tabBm" title="ブックマーク">
+<svg fill="currentColor" height="16" viewbox="0 0 24 24" width="16" xmlns="http://www.w3.org/2000/svg">
+<path d="M6 2a2 2 0 0 0-2 2v18l8-4 8 4V4a2 2 0 0 0-2-2H6z"></path>
+</svg>
+</button>
+</div>
+<!-- 検索モード -->
+<div class="search-area" id="searchArea">
+<form class="grow" id="searchForm" style="display:flex;gap:8px">
+<input id="searchInput" placeholder="キーワードまたはURLを入力（例: cat / example.com）" type="text">
+<button type="submit">検索</button>
+</input></form>
+</div>
+<!-- ===== ツールバー追記（HTML） ===== -->
+<button aria-controls="cDataPopover" aria-expanded="false" aria-haspopup="true" class="icon-btn" id="cDataBtn" title="データ（バックアップ/共有）">
+<!-- データ/スタック風アイコン（22px） -->
+<svg aria-hidden="true" height="22" viewbox="0 0 24 24" width="22" xmlns="http://www.w3.org/2000/svg">
+<ellipse cx="12" cy="5" fill="none" rx="7" ry="3" stroke="currentColor" stroke-width="1.5"></ellipse>
+<path d="M19 5v5c0 1.66-3.13 3-7 3s-7-1.34-7-3V5m14 5v5c0 1.66-3.13 3-7 3s-7-1.34-7-3v-5" fill="none" stroke="currentColor" stroke-width="1.5"></path>
+</svg>
+</button>
+<div aria-modal="false" class="data-popover" hidden="" id="cDataPopover" role="dialog">
+<div class="dp-section">
+<div class="dp-title">バックアップ &amp; 復元（A案）</div>
+<div class="dp-row">
+<button aria-label="JSONを書き出し" class="dp-btn" data-act="export">
+<span class="dp-icn">⬇</span>
+<span>バックアップ</span>
+</button>
+<button aria-label="JSONから復元" class="dp-btn" data-act="import">
+<span class="dp-icn">⬆</span>
+<span>復元</span>
+</button>
+<input accept="application/json" hidden="" id="cImportFile" type="file"/>
+</div>
+</div>
+<div class="dp-section">
+<div class="dp-title">クラウド同期（B案）</div>
+<div aria-label="同期プロファイル" class="dp-tabs" role="tablist">
+<button aria-selected="true" class="dp-tab is-active" data-prof="work" role="tab">仕事</button>
+<button aria-selected="false" class="dp-tab" data-prof="private" role="tab">プライベート</button>
+</div>
+<div class="dp-row">
+<button class="dp-btn" data-act="pick">同期フォルダ</button>
+<button class="dp-btn" data-act="save">保存</button>
+<button class="dp-btn" data-act="load">読み込み</button>
+<label class="dp-check"><input data-act="autosave" type="checkbox"/> 自動保存</label>
+</div>
+<div class="dp-note">選択したフォルダに <code>workspace-data.work.json</code> / <code>workspace-data.private.json</code> を作成します。</div>
+</div>
+</div>
+<!-- ブックマークモード -->
+<div class="bm-area grow" id="bmArea">
+<div class="bm-rail" id="bmRail"></div>
+<button class="manage-btn" id="openManager">管理を開く</button>
+</div>
+</div>
+<!-- D：結果表示 -->
+<div class="frame frame-d" id="resultPanel">
+<div class="placeholder" id="placeholder">…</div>
+<iframe class="result-frame" id="dFrame" src="dframe.html?compact=1"></iframe>
+<iframe class="result-frame" id="cseFrame" src="./results.html"></iframe>
+<iframe class="result-frame" id="pageFrame"></iframe>
+</div>
+</div>
+<!-- 右（E） -->
+<div class="sidebar-right">
+<div class="frame" id="EFrame" style="display:grid;grid-template-rows:auto 1fr;overflow:hidden;">
+<!-- ヘッダ（◀ 日付 ▶ ✎） -->
+<div class="e-head" style="display:flex;align-items:center;gap:6px;padding:6px;border-bottom:1px solid #e5e5e5;background:#fff;position:sticky;top:0;z-index:1">
+<button id="todoPrev" style="width:26px;height:26px;border:1px solid #ccc;border-radius:6px;background:#f6f6f6;cursor:pointer" title="前日">◀</button>
+<input id="todoDate" style="height:28px;padding:0 8px;border:1px solid #ccc;border-radius:6px" type="date"/>
+<button id="todoNext" style="width:26px;height:26px;border:1px solid #ccc;border-radius:6px;background:#f6f6f6;cursor:pointer" title="翌日">▶</button>
+<div style="margin-left:auto"></div>
+<button id="openTodoEditor" style="height:28px;padding:0 8px;border:1px solid #ccc;border-radius:6px;background:#2b6cb0;color:#fff;cursor:pointer" title="TODO追加">✎</button>
+</div>
+<!-- タブ：TODO / タイマー -->
+<div class="e-tabs">
+<button aria-label="TODO" class="e-tab active" id="eTabTodo" title="TODO">📝</button>
+<button aria-label="Timer" class="e-tab" id="eTabTimer" title="タイマー">⏱</button>
+<button aria-label="Checklist" class="e-tab" id="eTabChecklist" title="チェックリスト">☑</button>
+</div>
+<!-- TODOパネル（ツールバー＋リスト） -->
+<div id="todoPanel" style="display:grid;grid-template-rows:auto 1fr;overflow:auto;background:#fafafa;">
+<div class="todo-toolbar">
+<button id="todoPrev2" style="width:26px;height:26px;border:1px solid #ccc;border-radius:6px;background:#f6f6f6;cursor:pointer" title="前日">◀</button>
+<input id="todoDate2" style="height:28px;padding:0 8px;border:1px solid #ccc;border-radius:6px" type="date"/>
+<button id="todoNext2" style="width:26px;height:26px;border:1px solid #ccc;border-radius:6px;background:#f6f6f6;cursor:pointer" title="翌日">▶</button>
+<div style="margin-left:auto"></div>
+<button id="openTodoEditor2" style="height:28px;padding:0 8px;border:1px solid #ccc;border-radius:6px;background:#2b6cb0;color:#fff;cursor:pointer" title="TODO追加">✎</button>
+</div>
+<!-- リスト本体（描画先は従来と同じ #todoList のまま） -->
+<div id="todoList" style="overflow:auto;padding:8px;background:#fafafa"></div>
+</div>
+<!-- タイマーパネル（ドーナツ版） -->
+<div id="timerPanel" style="display:none;">
+<!-- タイマー内モード切替（TODO/タイマー切替の直下） -->
+<div class="t-subtabs" id="timerModeTabs">
+<button class="subtab active" id="tModeBtnNormal" title="ノーマル">⏱</button>
+<button class="subtab" id="tModeBtnPomo" title="ポモドーロ">🍅</button>
+<button class="subtab" id="tModeBtnReg" title="登録（順番実行）">📋</button>
+</div>
+<div class="t-wrap">
+<div class="t-progress">
+<svg aria-hidden="true" class="t-svg" viewbox="0 0 120 120">
+<!-- 外側（全体） -->
+<circle class="tp-bg" cx="60" cy="60" id="tpBg" r="52"></circle>
+<circle class="tp-fg" cx="60" cy="60" id="tpFg" r="52"></circle>
+<!-- 内側（区間）※中心は 60/60 に統一 -->
+<circle cx="60" cy="60" fill="none" id="tpInnerBg" r="42" stroke="#eee" stroke-width="6"></circle>
+<circle cx="60" cy="60" fill="none" id="tpInnerFg" r="42" stroke="#2b6cb0" stroke-linecap="round" stroke-width="6"></circle>
+</svg>
+<!-- 中央の3行（全体 / 区間） -->
+<div class="t-remaining" id="tRemainWrap">
+<div class="t-time-eta" id="tEta"></div> <!-- ← 追加：終了予定時刻 -->
+<div class="t-time-main" id="tTimeMain">00:00</div>
+<div class="t-time-sub" id="tTimeSub"></div>
+</div>
+</div>
+<div aria-live="polite" id="currentTaskName"></div>
+<!-- ポモドーロの状態表示 -->
+<div aria-live="polite" class="pomo-status" id="pomoStatus">
+<!-- JSで中身を差し込みます -->
+</div>
+<div class="t-controls">
+<input id="tMinutes" max="600" min="0" step="1" type="number" value="25"/>
+<button class="primary" id="tStart">開始</button>
+<button disabled="" id="tPause">一時停止</button>
+<button id="tReset">リセット</button>
+</div>
+<!-- ポモドーロ設定（🍅の時だけ表示） -->
+<div class="t-pomo" id="pomoInputs" style="display:none;gap:8px;align-items:center;margin:0 0 8px;flex-wrap:wrap;">
+<label>🔥 作業 <input id="pWork" max="180" min="1" style="width:64px;" type="number" value="25"/> 分</label>
+<label>☕ 休憩 <input id="pBreak" max="180" min="1" style="width:64px;" type="number" value="5"/> 分</label>
+<label>🔁 回数 <input id="pLoops" max="24" min="1" style="width:64px;" type="number" value="4"/></label>
+<!-- ここからロングブレイク -->
+<span aria-hidden="true" class="sep"></span>
+<label class="switch">
+<input id="pLongOn" type="checkbox"/>
+            🌙 長休憩を使う
+          </label>
+<div class="group">
+<label>🔄️ セット毎 <input id="pLongEvery" max="24" min="2" style="width:64px;" type="number" value="4"/> 回</label>
+<label>🌙 長休憩 <input id="pLongMin" max="180" min="1" style="width:64px;" type="number" value="15"/> 分</label>
+</div>
+</div>
+<!-- ノーマル用プリセット -->
+<div class="t-presets">
+<button data-min="1">1分</button><button data-min="5">5分</button>
+<button data-min="10">10分</button><button data-min="15">15分</button>
+<button data-min="25">25分</button><button data-min="45">45分</button>
+<button data-min="60">60分</button>
+</div>
+<div id="regListWrap">
+<div id="regToolbar">
+<div style="display:flex; gap:6px; align-items:center;">
+<button aria-label="行を追加" class="reg-btn icon" id="regAddBtn" title="行を追加">＋</button>
+<button aria-label="リストを空にする" class="reg-btn icon" id="regClearBtn" title="リストを空にする">🧹</button>
+</div>
+<div style="display:flex; gap:6px; align-items:center;">
+<span class="t-time-eta" id="regOverallEta"></span>
+<button aria-label="JSONエクスポート" class="reg-btn icon" id="regExportBtn" title="JSONエクスポート">⤓</button>
+<button aria-label="JSONインポート" class="reg-btn icon" id="regImportBtn" title="JSONインポート">⤒</button>
+<input accept="application/json" id="regImportFile" style="display:none" type="file"/>
+</div>
+</div>
+<div aria-label="登録タイマーの予定リスト" id="regList"></div>
+<div class="reg-view" id="regView"></div>
+</div>
+<div class="t-controls" style="justify-content:center; gap:10px;">
+<button aria-pressed="false" class="btn-audio" id="tMute" title="ミュート切替">🔊</button>
+<input id="tVol" max="1" min="0" step="0.05" style="width:160px" type="range" value="0.9"/>
+<label class="voice-toggle"><input id="tVoice" type="checkbox"/> 🗣️ 音声読み上げ</label>
+</div>
+</div>
+</div>
+<!-- ★ 追加：チェックリストパネル -->
+<div id="checklistPanel" style="display:none;">
+<div class="cl-toolbar">
+<div class="cl-subtabs">
+<button aria-label="使う" class="cl-subtab active" data-clview="use" title="使う">✅</button>
+<button aria-label="登録" class="cl-subtab" data-clview="edit" title="登録">✍️</button>
+<button aria-label="一覧" class="cl-subtab" data-clview="list" title="一覧">📋</button>
+</div>
+</div>
+<div class="cl-body">
+<!-- 使う -->
+<div class="cl-section active" id="clViewUse">
+<div class="cl-use-head">
+<select class="cl-select" id="clSelect"></select>
+</div>
+<div class="cl-progress">
+<div class="cl-perc" id="clPerc">0% 完了</div>
+<div class="cl-bar"><i id="clBar"></i></div>
+</div>
+<div class="cl-items" id="clItems"></div>
+<!-- ★ 追加：フッター。右端にリセット -->
+<div class="cl-foot">
+<button class="cl-btn" id="clResetBtn">リセット</button>
+</div>
+</div>
+<!-- 登録／編集 -->
+<div class="cl-section" id="clViewEdit">
+<form class="cl-form" id="clForm">
+<div class="row">
+<label>リストタイトル</label>
+<input id="clTitle" placeholder="例）出発前チェック" required="" type="text">
+</input></div>
+<div class="row">
+<label>チェック項目</label>
+<div class="items-editor" id="clItemsEditor"></div>
+<div class="btns">
+<button class="cl-btn" id="clAddRowBtn" type="button">＋ 行を追加</button>
+</div>
+<div class="cl-note">行の「×」で削除できます。順序は上から順に保存されます。</div>
+</div>
+<div class="btns">
+<button class="cl-btn primary" id="clSaveBtn" type="submit">登録</button>
+<button class="cl-btn" id="clCancelEditBtn" type="button">キャンセル</button>
+</div>
+<input id="clEditingId" type="hidden" value="">
+</input></form>
+</div>
+<!-- 一覧 -->
+<div class="cl-section" id="clViewList">
+<table class="cl-table" id="clTable">
+<!-- ★ 追記：列幅をテーブル側で固定 -->
+<colgroup>
+<col id="clColTitle"/> <!-- 自動（残り全部） -->
+<col id="clColActions" style="width:80px"/> <!-- 右列 固定幅 -->
+</colgroup>
+<thead>
+<tr><th>タイトル</th><th>操作</th></tr>
+</thead>
+<tbody></tbody>
+</table>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- サイドバー開閉ボタン（フッター寄せ） -->
+<button class="toggle-btn toggle-left" onclick="toggleLeft()">⬅</button>
+<button class="toggle-btn toggle-right" onclick="toggleRight()">➡</button>
+<!-- 予定編集モーダル -->
+<div aria-hidden="true" id="tlEditorModal">
+<div aria-label="予定を編集" aria-modal="true" class="modal-card" role="dialog">
+<div class="modal-head">
+<div>予定を編集</div>
+<button class="btn-close" id="tlEditorClose" type="button">閉じる</button>
+</div>
+<div class="modal-body">
+<iframe id="tlEditorFrame" title="予定編集"></iframe>
+</div>
+</div>
+</div>
+<!-- === タイムライン編集モーダル === -->
+<div id="tlEditOverlay" style="display:none;"></div>
+<div id="tlEditModal" style="display:none;">
+<div class="m-head">
+<strong>予定を編集</strong>
+<button id="mCancel" type="button">×</button>
+</div>
+<div class="m-body">
+<div class="m-row"><label>タイトル</label><input id="mTitle" type="text"/></div>
+<div class="m-row"><label>開始</label><input id="mStart" step="300" type="time"/></div>
+<div class="m-row"><label>終了</label><input id="mEnd" step="300" type="time"/></div>
+<div class="m-row"><label>対応時間</label><input id="mDur" placeholder="例: 1:00 / 90" type="text"/></div>
+<div class="m-row">
+<label>色</label>
+<div class="color-controls">
+<div class="color-inline">
+<input id="mColor" type="color" value="#2b6cb0">
+<span aria-hidden="true" class="color-preview" id="mColorPreview"></span>
+</input></div>
+<div aria-label="候補カラー" class="color-choices" id="mColorChoices" role="group"></div>
+</div>
+</div>
+<div class="m-row"><label>アイコン</label>
+<select id="mIcon">
+<option value="">（なし）</option>
+<option>✍️</option><option>📝</option><option>💬</option><option>📚</option>
+<option>☕</option><option>🚆</option><option>❗</option><option>🚗</option>
+<option>🍴</option><option>🧹</option><option>🛒</option><option>🏋️</option>
+<option>🛁</option><option>💤</option>
+</select>
+</div>
+</div>
+<div class="m-actions">
+<button class="danger" id="mDelete" type="button">削除</button>
+<div style="flex:1"></div>
+<button class="primary" id="mSave" type="button">保存</button>
+</div>
+</div>
+<!-- === TODO編集モーダル === -->
+<div id="todoModalOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:5000"></div>
+<div id="todoModal" style="display:none;position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);width:min(520px,92vw);background:#fff;border-radius:12px;border:1px solid #ddd;box-shadow:0 10px 30px rgba(0,0,0,.25);z-index:5001;padding:16px;">
+<div style="display:grid;gap:10px;">
+<input id="tmTitle" placeholder="タイトル" type="text"/>
+<input id="tmStart" placeholder="開始日" type="date"/>
+<input id="tmDue" placeholder="〆切" type="date"/>
+<div class="tm-row">
+<label for="tmIcon">アイコン</label>
+<select id="tmIcon">
+<option value="">（なし）</option>
+<option>✍️</option>
+<option>📝</option>
+<option>💬</option>
+<option>✅</option>
+<option>❗</option>
+<option>📚</option>
+<option>🏠</option>
+<option>🧹</option>
+<option>🛒</option>
+<option>🚗</option>
+<option>💡</option>
+</select>
+</div>
+<textarea id="tmMemo" placeholder="メモ" rows="3"></textarea>
+<label style="display:flex;gap:8px;align-items:center;">
+<input id="tmDone" type="checkbox"/> 完了
+      </label>
+<div style="display:flex;gap:8px;justify-content:flex-end;">
+<button class="danger" id="tmDelete">削除</button>
+<button id="tmCancel">キャンセル</button>
+<button class="primary" id="tmSave">保存</button>
+</div>
+</div>
+</div>
+<!-- ───────── JS：共通（開閉/検索/ブックマーク）───────── -->
+
+
+<!-- ───────── JS：Aフレーム（時計/動画＋前/次）───────── -->
+
+
+
+<!-- Bフレーム：機能切り替え（完全置き換え版／競合なし） -->
+
+
+
+
+
+
+
+<script src="./js/01-core.js"></script>
+<script src="./js/02-a-frame.js"></script>
+<script src="./js/03-b-schedule.js"></script>
+<script src="./js/04-d-frame-router.js"></script>
+<script src="./js/05-b-tabs.js"></script>
+<script src="./js/06-e-todo.js"></script>
+<script src="./js/07-e-timer.js"></script>
+<script src="./js/08-e-tabs.js"></script>
+<script src="./js/09-c-data.js"></script>
+<script src="./js/07-b-videos-sync.js"></script>
+</body>
+</html>

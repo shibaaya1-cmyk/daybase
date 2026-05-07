@@ -1,0 +1,264 @@
+/* ───────── Cフレーム（検索/ブックマーク）───────── */
+  .frame-c{
+    display:flex; align-items:center; gap:8px; padding:6px 10px; 
+    background:#f8fafc; border-bottom:1px solid #e2e8f0;
+    min-width: 0;
+  }
+  .tabs{display:flex;gap:6px;margin-right:8px}
+  .tab{height:28px;width:28px;padding:0;display:flex;align-items:center;justify-content:center;font-size:16px}
+  .tab.active{background:#3b82f6;color:#fff;border-color:#3b82f6}
+  .grow{flex:1}
+  
+  .search-area{display:flex;gap:8px;flex:1}
+  .search-area input{
+    flex:1;height:36px;padding:0 12px;border:1px solid #cbd5e1;border-radius:8px;
+    font-size:14px;outline:none; box-shadow: inset 0 1px 2px rgba(0,0,0,0.02); transition: 0.2s;
+  }
+  .search-area input:focus{ border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.1); }
+  .search-area button{
+    height:36px;padding:0 16px;border:0;border-radius:8px;background:#3b82f6;color:#fff;
+    cursor:pointer;font-size:14px;font-weight:600; transition: 0.2s;
+  }
+  .search-area button:hover{ background:#2563eb; }
+
+  /* バー全体 */
+  #bmArea {
+    flex: 1 1 auto;
+    min-width: 0; 
+    align-items: center;
+    gap: 8px;
+    min-height: 36px;
+  }
+
+  /* レール（横スクロール） */
+  #bmRail {
+    flex: 1 1 auto;
+    min-width: 0; 
+    display: flex;
+    gap: 8px;
+    padding: 4px 0;
+    white-space: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    max-width: 100%;
+    scrollbar-width: thin;
+  }
+  #bmRail::-webkit-scrollbar { height: 6px; }
+  #bmRail::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+
+  /* 共通のボタンスタイル */
+  .bm-item {
+    display: inline-flex; align-items: center; gap: 8px;
+    height: 30px; padding: 4px 12px; 
+    border: 1px solid #cbd5e1; border-radius: 999px; 
+    background: #ffffff; cursor: pointer; font-size: 13px; font-weight: 500; color: #334155;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.02); transition: 0.2s;
+  }
+  .bm-item:hover { border-color: #3b82f6; box-shadow: 0 2px 8px rgba(59,130,246,0.1); color: #2563eb; }
+  .bm-item img { width: 16px; height: 16px; border-radius: 4px; flex-shrink: 0; }
+  .bm-item .bm-title { max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  /* レール上のフォルダボタン */
+  .bm-folder-btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    height: 30px; padding: 4px 12px;
+    border: 1px solid #cbd5e1; border-radius: 999px;
+    background: #ffffff; cursor: pointer; font-size: 13px; font-weight: 600; color: #334155;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.02); transition: 0.2s;
+  }
+  .bm-folder-btn:hover { background: #f8fafc; border-color: #94a3b8; }
+  .bm-folder-btn .name { max-width: 140px; overflow: hidden; text-overflow: ellipsis; display: inline-block; vertical-align: bottom; }
+  .bm-folder-btn .caret { font-size: 11px; opacity: .7; color: #94a3b8; }
+
+  /* ★ ポップオーバー本体のブラッシュアップ */
+  .bm-popover {
+    position: absolute; z-index: 4000;
+    min-width: 260px; max-width: min(80vw, 420px);
+    background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.12);
+    display: flex; flex-direction: column; overflow: hidden;
+    animation: popIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  @keyframes popIn {
+    0% { opacity: 0; transform: translateY(-10px) scale(0.96); }
+    100% { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  .bm-popover-head {
+    display: flex; align-items: center; gap: 8px; font-weight: 800; color: #1e293b;
+    padding: 14px 16px; border-bottom: 1px solid #f1f5f9; background: #f8fafc;
+  }
+  .bm-popover-body {
+    padding: 12px; display: flex; flex-direction: column; gap: 6px;
+    max-height: 65vh; overflow-y: auto;
+  }
+
+  /* ★ ポップオーバー内のアイテムのホバーエフェクトをリッチに */
+  .bm-popover-body .bm-item {
+    border-radius: 10px; width: 100%; max-width: 100%; box-sizing: border-box;
+    justify-content: flex-start; transition: all 0.2s ease;
+    border: 1px solid transparent; background: transparent; box-shadow: none;
+  }
+  .bm-popover-body .bm-item:hover {
+    background: #f0f7ff;
+    border-color: #93c5fd;
+    color: #1d4ed8;
+    transform: translateX(4px);
+  }
+  .bm-popover-body .bm-title { max-width: none; flex: 1; text-align: left; }
+
+  .bm-popover-backdrop { position: fixed; inset: 0; z-index: 3999; background: transparent; }
+
+  /* 管理画面ボタン */
+  #openManager {
+    flex: 0 0 auto; height: 28px; padding: 0 10px; border: 0; border-radius: 6px;
+    background: #64748b; color: #fff; cursor: pointer; font-size: 12px; font-weight: 600; transition: 0.2s;
+  }
+  #openManager:hover { background: #475569; }
+
+  /* ───────── Dフレーム ───────── */
+  .frame-d{position:relative;background:#fafafa;overflow:hidden}
+  .placeholder{position:absolute;inset:0;display:grid;place-items:center;color:#777;font-size:14px;padding:16px;text-align:center}
+  .result-frame{position:absolute;inset:0;width:100%;height:100%;border:0;background:#fff;display:none}
+
+  #resultPanel { position: relative; }
+  #resultPanel > .result-frame { position:absolute; inset:0; width:100%; height:100%; border:0; display:none; background:#fff; }
+  #resultPanel.show-d    #dFrame    { display:block; }
+  #resultPanel.show-cse  #cseFrame  { display:block; }
+  #resultPanel.show-page #pageFrame { display:block; }
+  #resultPanel.used-d > .placeholder { display:none; }
+
+  #BFrame{
+    display: grid;
+    grid-template-rows: auto 1fr;
+    position: relative;
+    overflow: auto;
+    min-height: 0;
+  }
+  #bPanelVideos,
+  #bPanelSchedule{
+    position: relative !important;
+    z-index: 1 !important;
+    overflow: hidden;
+  }
+  #bPanelSchedule .timeline-head{
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 2000 !important;
+    background: #fff !important;
+  }
+  #bPanelSchedule .timeline-body{ position: relative; z-index: 1 !important; }
+  .t-event{ z-index: 100 !important; }
+  #bPanelVideos{ overflow: hidden !important; display: grid !important; grid-template-rows: auto 1fr !important; }
+  #bPanelVideos .vb-head{ padding: 8px 10px !important; border-bottom: 1px solid #e5e5e5 !important; background: #fff !important; }
+  #bPanelVideos .vb-list{ padding: 10px !important; display: flex !important; flex-direction: column !important; gap: 10px !important; overflow: auto !important; min-height: 0 !important; }
+  #bPanelVideos .vb-item{ border-radius: 12px !important; }
+
+  #bPanelVideos .vb-folder-btn{
+    display:flex; align-items:center; gap:8px; padding:6px 10px; border:1px solid #d0d0d0; border-radius:12px;
+    background:#fff; cursor:pointer; font-size:13px; height:36px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  }
+  #bPanelVideos .vb-folder-btn .name{ flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  #bPanelVideos .vb-folder-btn .caret{ font-size:11px; opacity:.7; margin-left:4px; }
+
+  /* ======================================================== */
+  /* ★ 以下、URLブックマーク（Cフレーム用）の追加スタイル ★ */
+  /* ======================================================== */
+
+  /* ポップオーバーの中身 */
+  .bm-popover {
+    position: absolute; z-index: 4000;
+    min-width: 260px; max-width: min(80vw, 420px);
+    background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.12);
+    display: flex; flex-direction: column; overflow: hidden;
+    animation: popIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  @keyframes popIn {
+    0% { opacity: 0; transform: translateY(-10px) scale(0.96); }
+    100% { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  .bm-popover-head {
+    display: flex; align-items: center; gap: 8px; font-weight: 800; color: #1e293b;
+    padding: 14px 16px; border-bottom: 1px solid #f1f5f9; background: #f8fafc;
+  }
+  .bm-popover-body {
+    padding: 12px; display: flex; flex-direction: column; gap: 6px;
+    max-height: 65vh; overflow-y: auto;
+  }
+
+  /* ポップオーバー内のアイテムは角丸カードに */
+  .bm-popover-body .bm-item {
+    border-radius: 10px; width: 100%; max-width: 100%; box-sizing: border-box;
+    justify-content: flex-start; transition: all 0.2s ease;
+    border: 1px solid transparent; background: transparent; box-shadow: none;
+    display: flex; align-items: center; gap: 8px; padding: 6px 10px; cursor: pointer;
+  }
+  .bm-popover-body .bm-item:hover {
+    background: #f0f7ff;
+    border-color: #93c5fd;
+    color: #1d4ed8;
+    transform: translateX(4px);
+  }
+  .bm-popover-body .bm-title { max-width: none; flex: 1; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .bm-popover-body .bm-item img { width: 16px; height: 16px; border-radius: 4px; flex-shrink: 0; }
+
+  .bm-popover-backdrop { position: fixed; inset: 0; z-index: 3999; background: transparent; }
+
+  /* 管理画面へのボタン */
+  #openManager {
+    flex: 0 0 auto; height: 28px; padding: 0 10px; border: 0; border-radius: 6px;
+    background: #64748b; color: #fff; cursor: pointer; font-size: 12px; font-weight: 600; transition: 0.2s;
+  }
+  #openManager:hover { background: #475569; }
+
+  /* ======================================================== */
+  /* ★ 崩れてしまったモーダル（予定編集画面）の修復CSS ★ */
+  /* ======================================================== */
+
+  /* 予定編集用のポップアップ（モーダル）を普段は隠す設定 */
+  #tlEditorModal {
+    position: fixed; inset: 0; display: none; align-items: center; justify-content: center;
+    background: rgba(0,0,0,.35); z-index: 9000;
+  }
+  
+  /* モーダルが開いた時の見た目 */
+  #tlEditorModal .modal-card {
+    width: min(1000px, 94vw); height: min(820px, 92vh); background: #fff;
+    border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,.25);
+    display: grid; grid-template-rows: 46px 1fr; overflow: hidden;
+  }
+  #tlEditorModal .modal-head {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    padding: 0 12px; border-bottom: 1px solid #e5e5e5; font-weight: 700; color: #1e293b;
+  }
+  #tlEditorModal .modal-body { position: relative; min-height: 0; }
+  
+  /* 謎のフレーム（iframe）を枠にピッタリ収める */
+  #tlEditorFrame { position: absolute; inset: 0; width: 100%; height: 100%; display: block; border: 0; }
+  
+  /* 閉じるボタンのスタイル */
+  #tlEditorModal .btn-close {
+    height: 28px; padding: 0 10px; border: 1px solid #ccc; border-radius: 6px; 
+    background: #f6f6f6; cursor: pointer; color: #333; font-weight: bold; transition: 0.2s;
+  }
+  #tlEditorModal .btn-close:hover { background: #e2e8f0; }
+
+  /* ======================================================== */
+  /* ★ その他の小さな予定編集モーダルの修復 ★ */
+  /* ======================================================== */
+
+  #tlEditOverlay { position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 5000; display: none; }
+  #tlEditModal {
+    position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%);
+    width: min(680px, 92vw); max-height: 80vh; overflow: auto; background: #fff;
+    border: 1px solid #ddd; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,.25);
+    z-index: 5001; display: none; padding: 20px; box-sizing: border-box;
+  }
+
+  /* ======================================================== */
+  /* ★ フレーム（枠）のはみ出しを防ぐ安全設定 ★ */
+  /* ======================================================== */
+  
+  #resultPanel { position: relative; flex: 1; min-height: 0; overflow: hidden; }
+  .frame-d { position: relative; background: #fafafa; overflow: hidden; }
+  .result-frame { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; display: none; background: #fff; }

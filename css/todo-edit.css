@@ -1,0 +1,73 @@
+:root {
+  --bg: #f7f7f8;
+  --card: #ffffff;
+  --accent: #2b6cb0;
+  --line: #e5e5e5;
+  --text: #222222;
+  --danger: #c0392b;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  font-family: system-ui, -apple-system, sans-serif;
+  color: var(--text);
+  line-height: 1.5;
+}
+
+/* ヘッダー */
+header {
+  position: sticky; top: 0; z-index: 100;
+  background: #fff;
+  border-bottom: 1px solid var(--line);
+  padding: 8px 12px;
+  display: flex; align-items: center; gap: 8px;
+}
+header h1 { font-size: 15px; margin: 0; font-weight: 700; flex: 1; }
+
+.btn {
+  height: 30px; padding: 0 12px; border-radius: 6px;
+  border: 1px solid #ccc; background: #f6f6f6;
+  font-size: 13px; cursor: pointer; transition: 0.2s;
+}
+.btn-primary { background: var(--accent); color: #fff; border: none; font-weight: 600; }
+.btn-danger { color: var(--danger); border-color: var(--danger); }
+.btn:hover { opacity: 0.8; }
+
+/* メインフォーム */
+main { padding: 12px; max-width: 500px; margin: 0 auto; }
+.section {
+  background: var(--card); border: 1px solid var(--line);
+  border-radius: 8px; padding: 12px; margin-bottom: 16px;
+}
+.form-group { margin-bottom: 12px; }
+label { display: block; font-size: 11px; font-weight: 700; color: #666; margin-bottom: 4px; }
+input[type="text"], input[type="date"], select, textarea {
+  width: 100%; padding: 8px; border: 1px solid #ddd;
+  border-radius: 6px; font-size: 14px; box-sizing: border-box;
+}
+.row { display: flex; gap: 8px; }
+
+/* サブタスク（ツリー構造対応） */
+.sub-item {
+  background: #f9f9f9; border: 1px solid var(--line);
+  border-radius: 6px; padding: 10px; margin-top: 8px;
+}
+.sub-item-header { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+.sub-item-dates { display: flex; align-items: center; gap: 4px; font-size: 12px; }
+.sub-item-dates input { width: auto; font-size: 12px; padding: 4px; }
+
+/* 孫タスク用の階層デザイン */
+.child-list {
+  margin-left: 18px;          /* 右にずらす */
+  border-left: 2px dashed #cbd5e1; /* 階層を示す点線 */
+  padding-left: 10px;
+}
+
+/* 小さな「＋追加」ボタン */
+.btn-add-child {
+  height: 24px; padding: 0 8px; border-radius: 4px;
+  border: none; background: #e2e8f0; color: #475569;
+  font-size: 11px; cursor: pointer;
+}
+.btn-add-child:hover { background: #cbd5e1; }
