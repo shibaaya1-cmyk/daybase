@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>予定入力 - WorkSpace</title>
+<style>
+  /* ───────── CSS: スタイリッシュ＆コンパクト ───────── */
+  :root {
+    --bg: #f8fafc; --card: #ffffff; --border: #e2e8f0;
+    --text-main: #334155; --text-sub: #64748b;
+    --accent: #3b82f6; --accent-light: #eff6ff; --danger: #f43f5e;
+  }
+
+  body {
+    margin: 0; background: var(--bg); color: var(--text-main);
+    font: 14px/1.5 system-ui, -apple-system, sans-serif;
+  }
+
+  header {
+    position: sticky; top: 0; z-index: 100;
+    background: rgba(255,255,255,0.95); backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--border);
+    padding: 8px 16px; display: flex; align-items: center; gap: 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  }
+  header h1 { font-size: 15px; margin: 0; font-weight: 700; flex-shrink: 0; }
+  
+  .date-nav { margin-left: auto; display: flex; align-items: center; gap: 6px; }
+  .nav-btn {
+    width: 32px; height: 32px; border: 1px solid var(--border);
+    border-radius: 6px; background: #fff; cursor: pointer; transition: 0.2s;
+  }
+  .nav-btn:hover { background: #f1f5f9; }
+  input[type="date"] {
+    height: 32px; padding: 0 8px; border: 1px solid var(--border);
+    border-radius: 6px; font-size: 13px; color: var(--text-main); font-weight: 600;
+  }
+
+  main {
+    max-width: 1000px; margin: 0 auto; padding: 16px;
+    display: grid; grid-template-columns: 1fr 1fr; gap: 20px;
+  }
+  @media (max-width: 768px) { main { grid-template-columns: 1fr; } }
+
+  .section-title {
+    font-size: 12px; font-weight: 700; color: var(--text-sub);
+    text-transform: uppercase; margin-bottom: 12px; display: flex; align-items: center; gap: 6px;
+  }
+
+  .card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 12px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  }
+
+  .form-group { margin-bottom: 16px; position: relative; }
+  label { display: block; font-size: 11px; font-weight: 700; color: var(--text-sub); margin-bottom: 4px; }
+  .input-text, select {
+    width: 100%; padding: 8px 12px; border: 1px solid var(--border);
+    border-radius: 8px; font-size: 14px; box-sizing: border-box; transition: 0.2s; background: #fff;
+  }
+  .input-text:focus, select:focus { border-color: var(--accent); outline: none; }
+
+  /* チップ */
+  .chip-container { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+  .chip {
+    padding: 4px 12px; border-radius: 12px; background: #f1f5f9;
+    font-size: 11px; font-weight: 600; cursor: pointer; transition: 0.2s; border: 1px solid transparent; color: var(--text-main);
+  }
+  .chip:hover { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+  /* サジェスト（TODO・履歴） */
+  .suggest-box {
+    position: absolute; z-index: 1000; background: #fff;
+    border: 1px solid var(--border); border-radius: 8px;
+    box-shadow: 0 10px 25px -5px rgba(0,0,0,0.15);
+    max-height: 250px; overflow-y: auto; display: none; width: 100%; top: 60px;
+  }
+  .suggest-item { padding: 10px 12px; font-size: 12px; font-weight: 600; cursor: pointer; border-bottom: 1px solid #f8fafc; transition: 0.2s; }
+  .suggest-item:hover { background: var(--accent-light); color: var(--accent); }
+
+  /* カラー＆アイコンパレット */
+  .palette { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; padding: 4px 0; }
+  .swatch {
+    width: 24px; height: 24px; border-radius: 50%; cursor: pointer;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1); transition: 0.2s; border: 2px solid transparent;
+  }
+  .swatch.active { box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--text-main); transform: scale(1.1); }
+
+  .swatch-icon {
+    width: 28px; height: 28px; border-radius: 6px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    background: #f1f5f9; font-size: 14px; transition: 0.2s; border: 2px solid transparent;
+  }
+  .swatch-icon:hover { background: #e2e8f0; }
+  .swatch-icon.active { border-color: var(--accent); background: var(--accent-light); }
+
+  /* リスト */
+  .schedule-list { display: flex; flex-direction: column; gap: 8px; }
+  .item-row {
+    display: flex; align-items: center; padding: 8px 10px;
+    background: #fdfdfd; border: 1px solid var(--border); border-radius: 8px; transition: 0.2s;
+  }
+  /* クリック編集用のホバーエフェクト */
+  .item-clickable { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; cursor: pointer; border-radius: 4px; transition: 0.2s; }
+  .item-clickable:hover { opacity: 0.7; }
+  
+  .item-time { font-size: 12px; font-weight: 700; color: var(--text-main); min-width: 80px; }
+  .item-body { flex: 1; min-width: 0; }
+  .item-title { font-weight: 700; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  
+  .item-delete { color: var(--text-sub); cursor: pointer; font-size: 16px; padding: 4px 8px; transition: 0.2s; margin-left: 4px; }
+  .item-delete:hover { color: var(--danger); }
+
+  /* ボタン */
+  .tpl-actions { display: flex; gap: 6px; margin-top: 12px; }
+  .btn {
+    padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 600;
+    cursor: pointer; border: 1px solid var(--border); background: #fff; transition: 0.2s; color: var(--text-main);
+  }
+  .btn-primary { background: var(--accent); color: #fff; border: none; }
+  .btn-danger { color: var(--danger); border-color: var(--danger); }
+  .btn:hover { opacity: 0.8; }
+
+  /* ダイアログ（テンプレート保存用） */
+  dialog {
+    border: none; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+    padding: 20px; width: 320px; max-width: 90%; background: #fff; color: var(--text-main);
+  }
+  dialog::backdrop { background: rgba(0, 0, 0, 0.4); backdrop-filter: blur(2px); }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>予定管理</h1>
+  <div class="date-nav">
+    <button class="nav-btn" id="prevDay">◀</button>
+    <input type="date" id="targetDate">
+    <button class="nav-btn" id="nextDay">▶</button>
+    <button class="btn" id="goToday">今日</button>
+  </div>
+</header>
+
+<main>
+  <section>
+    <div class="section-title">🕒 予定を登録</div>
+    <div class="card">
+      <div class="form-group">
+        <label>タイトル</label>
+        <div style="display:flex; gap:4px;">
+          <input type="text" id="titleInput" class="input-text" placeholder="何をする？" autocomplete="off">
+          <button class="btn" id="btnShowTodo" title="TODOから選択">📋</button>
+        </div>
+        <div id="suggestBox" class="suggest-box"></div>
+      </div>
+
+      <div class="form-group">
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+          <div>
+            <label>開始時間</label>
+            <input type="time" id="startTime" class="input-text">
+          </div>
+          <div>
+            <label>終了時間 / 期間</label>
+            <input type="time" id="endTime" class="input-text">
+          </div>
+        </div>
+        <div class="chip-container">
+          <span class="chip" onclick="addDuration(15)">+15分</span>
+          <span class="chip" onclick="addDuration(30)">+30分</span>
+          <span class="chip" onclick="addDuration(45)">+45分</span>
+          <span class="chip" onclick="addDuration(60)">+1時間</span>
+          <span class="chip" onclick="addDuration(90)">+1.5時間</span>
+          <span class="chip" onclick="addDuration(120)">+2時間</span>
+        </div>
+      </div>
+
+<div class="form-group">
+        <label>カラー</label>
+        <div class="palette" id="colorPalette">
+          <div class="swatch active" data-color="#4e79a7" style="background:#4e79a7;" title="ブルー"></div>
+          <div class="swatch" data-color="#76b7b2" style="background:#76b7b2;" title="グリーンブルー"></div>
+          <div class="swatch" data-color="#59a14f" style="background:#59a14f;" title="グリーン"></div>
+          <div class="swatch" data-color="#edc948" style="background:#edc948;" title="イエロー"></div>
+          <div class="swatch" data-color="#f28e2b" style="background:#f28e2b;" title="オレンジ"></div>
+          <div class="swatch" data-color="#e15759" style="background:#e15759;" title="レッド"></div>
+          <div class="swatch" data-color="#b07aa1" style="background:#b07aa1;" title="ラベンダー"></div>
+          <div class="swatch" data-color="#9c755f" style="background:#9c755f;" title="ブラウン"></div>
+          <div class="swatch" data-color="#bab0ab" style="background:#bab0ab;" title="グレー"></div>
+          <div class="swatch" data-color="#86b0e5" style="background:#86b0e5;" title="シアン"></div>
+        </div>
+        <input type="hidden" id="colorInput" value="#4e79a7">
+      </div>
+
+      <div class="form-group">
+        <label>アイコン (絵文字)</label>
+        <div class="palette" id="iconPalette">
+          <div class="swatch-icon active" data-icon="📝">📝</div>
+          <div class="swatch-icon" data-icon="✍️">✍️</div>
+          <div class="swatch-icon" data-icon="💬">💬</div>
+          <div class="swatch-icon" data-icon="✅">✅</div>
+          <div class="swatch-icon" data-icon="❗">❗</div>
+          <div class="swatch-icon" data-icon="📚">📚</div>
+          <div class="swatch-icon" data-icon="🏠">🏠</div>
+          <div class="swatch-icon" data-icon="🧹">🧹</div>
+          <div class="swatch-icon" data-icon="🛒">🛒</div>
+          <div class="swatch-icon" data-icon="🚗">🚗</div>
+          <div class="swatch-icon" data-icon="💡">💡</div>
+          <div class="swatch-icon" data-icon="🐕">🐕</div>
+          <div class="swatch-icon" data-icon="☕">☕</div>
+          <input type="text" id="iconInput" class="input-text" placeholder="手入力" value="📝" style="width: 60px; text-align: center; padding: 4px 8px; margin-left: 4px;">
+        </div>
+      </div>
+
+      <div style="display:flex; gap:8px; margin-top:8px;">
+        <button id="btnCancelEdit" class="btn" style="display:none; height:40px;">キャンセル</button>
+        <button id="btnSave" class="btn btn-primary" style="flex:1; height:40px; font-size:14px;">この予定を追加</button>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-title">📅 この日の予定</div>
+    <div class="card">
+      <div id="scheduleList" class="schedule-list"></div>
+      
+      <hr style="border:0; border-top:1px dashed var(--border); margin:20px 0;">
+      
+      <div class="section-title">💾 テンプレート</div>
+      <div id="templateList" class="chip-container"></div>
+      <div class="tpl-actions">
+        <button class="btn" id="btnOpenTplDialog">現在の予定を保存...</button>
+        <button class="btn btn-danger" id="btnResetDay" style="margin-left:auto;">一日をリセット</button>
+      </div>
+    </div>
+  </section>
+</main>
+
+<dialog id="tplDialog">
+  <div style="font-size:14px; font-weight:700; margin-bottom:16px;">テンプレートを保存</div>
+  <div class="form-group">
+    <label>既存のテンプレートから選んで上書き</label>
+    <select id="tplExisting" class="input-text" style="margin-bottom:12px;">
+      <option value="">-- 新規作成 --</option>
+    </select>
+    <label>テンプレート名</label>
+    <input type="text" id="tplNameInput" class="input-text" placeholder="例：平日ルーティン">
+  </div>
+  <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:20px;">
+    <button class="btn" id="btnCancelTpl">キャンセル</button>
+    <button class="btn btn-primary" id="btnSaveTpl">保存する</button>
+  </div>
+</dialog>
+
+<script>
+  /* ───────── JS: ロジック ───────── */
+  (function() {
+    const KEYS = { SCHEDULE: 'schedulesV1', TEMPLATE: 'scheduleTemplatesV1', TODOS: 'todosV1' };
+    let currentDate = new Date();
+    let editingId = null; 
+
+    const el = {
+      date: document.getElementById('targetDate'),
+      list: document.getElementById('scheduleList'),
+      title: document.getElementById('titleInput'),
+      start: document.getElementById('startTime'),
+      end: document.getElementById('endTime'),
+      icon: document.getElementById('iconInput'),
+      colorInput: document.getElementById('colorInput'),
+      suggest: document.getElementById('suggestBox'),
+      tplContainer: document.getElementById('templateList'),
+      tplDialog: document.getElementById('tplDialog'),
+      tplExisting: document.getElementById('tplExisting'),
+      tplNameInput: document.getElementById('tplNameInput'),
+      btnSave: document.getElementById('btnSave'),
+      btnCancelEdit: document.getElementById('btnCancelEdit')
+    };
+
+    function ymd(d) { return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
+
+    function safeGetData(key, fallback) {
+      try {
+        const raw = localStorage.getItem(key);
+        if (!raw) return fallback;
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(fallback) && !Array.isArray(parsed)) return fallback;
+        if (!Array.isArray(fallback) && typeof parsed !== 'object') return fallback;
+        return parsed;
+      } catch (e) { return fallback; }
+    }
+
+    function getSchedules() { return safeGetData(KEYS.SCHEDULE, {}); }
+    function setSchedules(data) { localStorage.setItem(KEYS.SCHEDULE, JSON.stringify(data)); notify(); }
+    function notify() { if (window.opener) { try { window.opener.postMessage({ type: 'SCHEDULE_SYNC' }, '*'); } catch(e){} } }
+
+    function init() {
+      if (!el.date) return;
+      el.date.value = ymd(currentDate);
+      renderAll();
+
+      el.date.addEventListener('change', (e) => { currentDate = new Date(e.target.value); cancelEdit(); renderAll(); });
+      document.getElementById('prevDay').onclick = () => { moveDate(-1); cancelEdit(); };
+      document.getElementById('nextDay').onclick = () => { moveDate(1); cancelEdit(); };
+      document.getElementById('goToday').onclick = () => { currentDate = new Date(); el.date.value = ymd(currentDate); cancelEdit(); renderAll(); };
+      
+      el.btnSave.onclick = saveEntry;
+      el.btnCancelEdit.onclick = cancelEdit; 
+      document.getElementById('btnResetDay').onclick = resetDay;
+      document.getElementById('btnShowTodo').onclick = toggleTodoSuggest;
+      
+      el.title.addEventListener('focus', showHistory);
+      document.addEventListener('click', (e) => { 
+        if (!e.target.closest('.form-group')) el.suggest.style.display = 'none'; 
+      });
+
+      // カラーパレットの選択処理
+      document.querySelectorAll('.swatch').forEach(sw => {
+        sw.addEventListener('click', function() {
+          document.querySelectorAll('.swatch').forEach(s => s.classList.remove('active'));
+          this.classList.add('active');
+          el.colorInput.value = this.getAttribute('data-color');
+        });
+      });
+
+      // アイコンパレットの選択処理
+      document.querySelectorAll('.swatch-icon').forEach(sw => {
+        sw.addEventListener('click', function() {
+          document.querySelectorAll('.swatch-icon').forEach(s => s.classList.remove('active'));
+          this.classList.add('active');
+          el.icon.value = this.getAttribute('data-icon');
+        });
+      });
+
+      el.icon.addEventListener('input', function() {
+        document.querySelectorAll('.swatch-icon').forEach(s => s.classList.remove('active'));
+      });
+
+      // テンプレート保存ダイアログのイベント
+      document.getElementById('btnOpenTplDialog').onclick = openTplDialog;
+      document.getElementById('btnCancelTpl').onclick = () => el.tplDialog.close();
+      document.getElementById('btnSaveTpl').onclick = confirmSaveTemplate;
+      el.tplExisting.addEventListener('change', function() {
+        el.tplNameInput.value = this.value;
+      });
+    }
+
+    function moveDate(n) {
+      currentDate.setDate(currentDate.getDate() + n);
+      el.date.value = ymd(currentDate);
+      renderAll();
+    }
+
+    function renderAll() {
+      renderList();
+      renderTemplates();
+    }
+
+    function renderList() {
+      const day = el.date.value;
+      const db = getSchedules();
+      const dayData = Array.isArray(db[day]) ? db[day] : [];
+      
+      dayData.sort((a,b) => (a.start || '').localeCompare(b.start || ''));
+
+      if (dayData.length === 0) {
+        el.list.innerHTML = '<div style="color:var(--text-sub); text-align:center; padding:20px 0; font-size:13px;">予定がありません</div>';
+        return;
+      }
+
+      el.list.innerHTML = '';
+      dayData.forEach((item) => {
+        const row = document.createElement('div');
+        row.className = 'item-row';
+        row.style.borderLeft = `4px solid ${item.color || '#3b82f6'}`; // デフォルトカラーもブルーに戻す
+        
+        row.innerHTML = `
+          <div class="item-clickable" onclick="editEntry('${item.id}')" title="クリックして編集">
+            <div class="item-time">${item.start || '--:--'} 〜 ${item.end || '--:--'}</div>
+            <div class="item-body">
+              <div class="item-title">${item.icon || ''} ${item.title || '(無題)'}</div>
+            </div>
+          </div>
+          <div class="item-delete" onclick="deleteEntry('${item.id}')" title="削除">×</div>
+        `;
+        el.list.appendChild(row);
+      });
+    }
+
+    window.editEntry = (id) => {
+      const day = el.date.value;
+      const db = getSchedules();
+      const dayData = Array.isArray(db[day]) ? db[day] : [];
+      const item = dayData.find(i => i.id == id);
+      if (!item) return;
+
+      editingId = id;
+      el.title.value = item.title || '';
+      el.start.value = item.start || '';
+      el.end.value = item.end || '';
+      el.icon.value = item.icon || '';
+      el.colorInput.value = item.color || '#3b82f6';
+
+      // カラーパレットの選択状態を更新
+      document.querySelectorAll('.swatch').forEach(s => {
+        s.classList.remove('active');
+        if(s.getAttribute('data-color') === el.colorInput.value) s.classList.add('active');
+      });
+
+      // アイコンパレットの選択状態を更新
+      document.querySelectorAll('.swatch-icon').forEach(s => {
+        s.classList.remove('active');
+        if(s.getAttribute('data-icon') === el.icon.value) s.classList.add('active');
+      });
+
+      el.btnSave.textContent = 'この予定を更新';
+      el.btnCancelEdit.style.display = 'inline-block';
+    };
+
+    function cancelEdit() {
+      editingId = null;
+      el.title.value = '';
+      el.start.value = '';
+      el.end.value = '';
+      el.btnSave.textContent = 'この予定を追加';
+      el.btnCancelEdit.style.display = 'none';
+    }
+
+    function saveEntry() {
+      const title = el.title.value.trim();
+      if (!title || !el.start.value) return alert('タイトルと開始時間を入力してください');
+
+      const day = el.date.value;
+      const db = getSchedules();
+      if (!Array.isArray(db[day])) db[day] = [];
+
+      if (editingId) {
+        const idx = db[day].findIndex(i => i.id == editingId);
+        if (idx > -1) {
+          db[day][idx] = {
+            ...db[day][idx],
+            title,
+            start: el.start.value,
+            end: el.end.value || el.start.value,
+            icon: el.icon.value,
+            color: el.colorInput.value
+          };
+        }
+      } else {
+        db[day].push({
+          title,
+          start: el.start.value,
+          end: el.end.value || el.start.value,
+          icon: el.icon.value,
+          color: el.colorInput.value,
+          id: Date.now()
+        });
+      }
+
+      setSchedules(db);
+      cancelEdit(); 
+      renderList();
+    }
+
+    window.deleteEntry = (id) => {
+      const day = el.date.value;
+      const db = getSchedules();
+      if (Array.isArray(db[day])) {
+        db[day] = db[day].filter(item => item.id != id);
+        setSchedules(db);
+      }
+      if (editingId == id) cancelEdit();
+      renderList();
+    };
+
+    function resetDay() {
+      if (!confirm('今日一日の予定をすべて削除しますか？')) return;
+      const day = el.date.value;
+      const db = getSchedules();
+      delete db[day];
+      setSchedules(db);
+      cancelEdit();
+      renderList();
+    }
+
+    window.addDuration = (min) => {
+      if (!el.start.value) return;
+      const [h, m] = el.start.value.split(':').map(Number);
+      const date = new Date();
+      date.setHours(h, m + min);
+      el.end.value = ('0' + date.getHours()).slice(-2) + ':' + ('0' + date.getMinutes()).slice(-2);
+    };
+
+    function showHistory() {
+      const db = getSchedules();
+      const titles = new Set();
+      Object.values(db).forEach(dayArr => {
+        if (Array.isArray(dayArr)) dayArr.forEach(s => { if(s && s.title) titles.add(s.title); });
+      });
+      
+      if (titles.size === 0) return;
+      el.suggest.innerHTML = '';
+      
+      Array.from(titles).slice(-10).reverse().forEach(t => {
+        const div = document.createElement('div');
+        div.className = 'suggest-item';
+        div.textContent = t;
+        div.onclick = () => { el.title.value = t; el.suggest.style.display = 'none'; };
+        el.suggest.appendChild(div);
+      });
+      el.suggest.style.display = 'block';
+    }
+
+    function toggleTodoSuggest() {
+      const todos = safeGetData(KEYS.TODOS, []);
+      const leaves = [];
+
+      todos.forEach(root => {
+        if (!root) return;
+        if (!root.subtasks || root.subtasks.length === 0) {
+          if (!root.done) leaves.push({ title: root.title || '(無題)', icon: root.icon || '📝' });
+          return;
+        }
+
+        const subMap = {};
+        const parentIds = new Set();
+        root.subtasks.forEach(s => {
+          subMap[s.id] = s;
+          if (s.parentSubId) parentIds.add(s.parentSubId);
+        });
+
+        root.subtasks.forEach(s => {
+          if (!parentIds.has(s.id) && !s.done) {
+            let fullTitle = s.title || '(無題)';
+            let curr = s;
+            while(curr.parentSubId && subMap[curr.parentSubId]) {
+              curr = subMap[curr.parentSubId];
+              fullTitle = (curr.title || '(無題)') + '_' + fullTitle;
+            }
+            fullTitle = (root.title || '(無題)') + '_' + fullTitle;
+            leaves.push({ title: fullTitle, icon: root.icon || '📝' });
+          }
+        });
+      });
+      
+      el.suggest.innerHTML = '<div style="padding:8px; font-weight:700; font-size:11px; color:var(--text-sub); background:#f8fafc;">TODOから選択 (未完了の末端タスク)</div>';
+      
+      if(leaves.length === 0) {
+        el.suggest.innerHTML += '<div class="suggest-item" style="color:var(--text-sub)">選択できるタスクはありません</div>';
+      } else {
+        leaves.forEach(t => {
+          const div = document.createElement('div');
+          div.className = 'suggest-item';
+          div.textContent = t.icon + ' ' + t.title;
+          div.onclick = () => { 
+            el.title.value = t.title; 
+            el.icon.value = t.icon; 
+            
+            document.querySelectorAll('.swatch-icon').forEach(s => {
+              s.classList.remove('active');
+              if(s.getAttribute('data-icon') === t.icon) s.classList.add('active');
+            });
+
+            el.suggest.style.display = 'none'; 
+          };
+          el.suggest.appendChild(div);
+        });
+      }
+      el.suggest.style.display = 'block';
+    }
+
+    function openTplDialog() {
+      const dayData = Array.isArray(getSchedules()[el.date.value]) ? getSchedules()[el.date.value] : [];
+      if (dayData.length === 0) return alert('保存する予定がありません');
+
+      const tpls = safeGetData(KEYS.TEMPLATE, {});
+      el.tplExisting.innerHTML = '<option value="">-- 新規作成 --</option>';
+      Object.keys(tpls).forEach(name => {
+        const opt = document.createElement('option');
+        opt.value = name;
+        opt.textContent = name;
+        el.tplExisting.appendChild(opt);
+      });
+      
+      el.tplNameInput.value = '';
+      el.tplDialog.showModal();
+    }
+
+    function confirmSaveTemplate() {
+      const name = el.tplNameInput.value.trim();
+      if (!name) return alert('テンプレート名を入力してください');
+      
+      const dayData = Array.isArray(getSchedules()[el.date.value]) ? getSchedules()[el.date.value] : [];
+      const tpls = safeGetData(KEYS.TEMPLATE, {});
+      
+      if (tpls[name] && !confirm(`「${name}」は既に存在します。上書きしますか？`)) return;
+
+      tpls[name] = dayData.map(d => ({ ...d, id: undefined })); 
+      localStorage.setItem(KEYS.TEMPLATE, JSON.stringify(tpls));
+      renderTemplates();
+      el.tplDialog.close();
+    }
+
+    function renderTemplates() {
+      const tpls = safeGetData(KEYS.TEMPLATE, {});
+      el.tplContainer.innerHTML = '';
+      
+      const keys = Object.keys(tpls);
+      if(keys.length === 0) {
+        el.tplContainer.innerHTML = '<span style="font-size:12px; color:var(--text-sub);">保存されたテンプレートはありません</span>';
+        return;
+      }
+
+      keys.forEach(name => {
+        const span = document.createElement('span');
+        span.className = 'chip';
+        span.textContent = name;
+        span.title = "左クリックで反映 / 右クリックで削除";
+        
+        span.onclick = () => {
+          if (!confirm(`テンプレート「${name}」を今日の予定に反映しますか？（現在の予定に追加されます）`)) return;
+          const db = getSchedules();
+          const currentData = Array.isArray(db[el.date.value]) ? db[el.date.value] : [];
+          const tplData = Array.isArray(tpls[name]) ? JSON.parse(JSON.stringify(tpls[name])).map(d => ({ ...d, id: Date.now() + Math.random() })) : [];
+          
+          db[el.date.value] = currentData.concat(tplData);
+          setSchedules(db);
+          renderList();
+        };
+        
+        span.oncontextmenu = (e) => {
+          e.preventDefault();
+          if (confirm(`テンプレート「${name}」を削除しますか？`)) {
+            delete tpls[name];
+            localStorage.setItem(KEYS.TEMPLATE, JSON.stringify(tpls));
+            renderTemplates();
+          }
+        };
+        
+        el.tplContainer.appendChild(span);
+      });
+    }
+
+    init();
+  })();
+</script>
+</body>
+</html>

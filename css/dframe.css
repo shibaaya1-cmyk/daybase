@@ -1,0 +1,111 @@
+:root{
+  --bg:#fafafa; --card:#fff; --line:#e5e7eb; --accent:#2563eb; --muted:#6b7280; --text:#111827;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body {
+  margin: 0;
+  background: var(--bg);
+  font-family: system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,"Apple Color Emoji","Segoe UI Emoji";
+  color: var(--text);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* ヘッダ＆アイコンタブ */
+header{display:flex;gap:12px;align-items:center;padding:10px;border-bottom:1px solid var(--line);background:#fff;position:sticky;top:0;z-index:10;flex: 0 0 auto;}
+.tabs{display:flex;gap:8px;flex-wrap:wrap}
+/* アイコンタブの安定化（余白ズレ/にじみ対策） */
+.tabs .tab-btn{
+  appearance:none; border:1px solid var(--line); background:#fff; border-radius:12px;
+  width:38px; height:38px; display:grid; place-items:center; cursor:pointer;
+  transition:box-shadow .12s,border-color .12s,transform .08s;
+  line-height:0;                  /* ← 行間の余白を消す */
+}
+.tabs .tab-btn svg{
+  width:20px; height:20px;
+  display:block;                  /* ← インラインSVGの下余白対策 */
+  stroke:currentColor;            /* ← テキスト色に連動（アクセント時も綺麗） */
+  fill:none;                      /* ← 余計な塗りを防ぐ */
+  stroke-width:2;
+  stroke-linecap:round;           /* ← 線端/結合をラウンドにして視認性UP */
+  stroke-linejoin:round;
+  overflow: visible; 
+  shape-rendering: geometricPrecision;
+}
+.tabs .tab-btn[aria-selected="true"]{
+  border-color:var(--accent);
+  box-shadow:0 0 0 2px rgba(37,99,235,.12);
+  color:var(--accent);            /* ← currentColor でアイコン色も揃う */
+}
+.tabs .tab-btn:hover{ transform:translateY(-1px) }
+#panelHost > .panel:not([data-active="true"]) {
+display: none;
+}
+#panelHost > .panel[data-active="true"] {
+display: flex;               /* 高さを伝播できるようにflexで表示 */
+}
+.card {
+background: var(--card);
+border: 1px solid var(--line);
+border-radius: 12px;
+padding: 12px;
+}
+#panelHost > .panel .card {
+flex: 1 1 auto;
+min-height: 0;
+display: flex;
+flex-direction: column;
+}
+/* すべての埋め込みiframeを “高さ100%の子” に統一 */
+#panelHost > .panel .card iframe {
+width: 100%;
+height: 100%;
+border: 0;
+display: block;
+flex: 1 1 auto;
+min-height: 0;
+}
+
+/* パネルの表示制御は “アクティブだけflex表示” に一本化 */
+#panelHost > .panel {
+flex: 1 1 auto;
+min-height: 0;   /* 子(カード/iframe)へ高さを渡すのに必須 */
+}
+.muted{color:var(--muted)}
+
+/* Webビューは枠なしカードで埋め込み（paddingだけ0） */
+#panel-web .card { padding: 0; }
+
+/* compactモード：高さはFlexで自動化されるのでpaddingのみ調整 */
+body.compact header { padding: 8px; }
+body.compact main   { padding: 8px; }
+body.compact #webview{ height:calc(100svh - 72px); }
+
+/* カレンダーパネルを常に全高に */
+#panel-calendar .card { height: 100%; padding: 0; }
+#panel-calendar iframe { width: 100%; height: 100%; border: 0; display: block; }
+#panel-todo .card { height: 100%; padding: 0; }
+
+/* マインドマップパネルを全高に */
+#panel-mindmap .card { height: 100%; padding: 0; }
+#panel-mindmap iframe { width: 100%; height: 100%; border: 0; display: block; }
+
+/* メモパネルを全高に */
+#panel-memo .card { height: 100%; padding: 0; }
+#panel-memo iframe { width: 100%; height: 100%; border: 0; display: block; }
+
+/* ★ 追加：ジャーナルパネルを全高に */
+#panel-journal .card { height: 100%; padding: 0; }
+#panel-journal iframe { width: 100%; height: 100%; border: 0; display: block; }
+
+/* main を縦Flexにして “高さの受け渡し” を担保 */
+main#panelHost {
+flex: 1 1 auto;
+min-height: 0;       /* ←重要 */
+display: flex;
+flex-direction: column;
+padding: 12px;
+overflow: hidden;    /* スクロールは下層(iframe)で */
+}

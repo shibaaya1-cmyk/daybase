@@ -1,0 +1,957 @@
+/* === Eフレーム：TODOリスト === */
+  #EFrame #todoList .todo-row{
+    grid-template-columns: 22px 1fr 30px !important;  /* ✔ / 本文(3行) / → */
+    align-items: start !important;
+  }
+
+  #EFrame #todoList .todo-main{
+    display: grid !important;
+    grid-template-rows: auto auto auto !important;  /* 1:タイトル 2:〆切 3:メモ */
+    row-gap: 2px !important;
+    min-width: 0 !important;   /* 省略記号が効くように */
+  }
+
+  #EFrame #todoList .todo-title-line,
+  #EFrame #todoList .todo-due-line,
+  #EFrame #todoList .todo-memo-line{
+    overflow: hidden !important;
+    white-space: nowrap !important;
+    text-overflow: ellipsis !important; /* 末尾で見切る */
+    min-width: 0 !important;
+  }
+
+  /* 行ごとの見た目 */
+  #EFrame #todoList .todo-title-line{
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    font-size: 13px !important;
+    color: #111 !important;
+    line-height: 1.3 !important;
+    font-weight: 600 !important;
+  }
+  #EFrame #todoList .todo-ico{ flex: 0 0 18px !important; text-align: center !important; }
+  #EFrame #todoList .todo-title-text{ flex: 1 1 auto !important; min-width: 0 !important; }
+
+  #EFrame #todoList .todo-due-line{ font-size: 12px !important; color:#555 !important; }
+  #EFrame #todoList .todo-memo-line{ font-size: 12px !important; color:#666 !important; }
+  #EFrame #todoList .todo-row.todo-done{
+  opacity: 0.55;
+  }
+  #EFrame #todoList .todo-row.todo-done {
+    opacity: 0.6;                /* 少し薄く */
+  }
+  #EFrame #todoList .todo-row.todo-done .todo-title-text,
+  #EFrame #todoList .todo-row.todo-done .todo-due-line,
+  #EFrame #todoList .todo-row.todo-done .todo-memo-line {
+    text-decoration: line-through;  /* 取り消し線 */
+  }
+  .todo-row.todo-done .todo-title-text{ text-decoration: line-through; color:#888; }
+  .todo-row.todo-done .todo-due-line{ color:#aaa; }
+
+  /* 〆切が今日 */
+  #EFrame #todoList .todo-due-line.due-today {
+    color: #d35400 !important;/* オレンジ */
+  }
+
+  /* 〆切を過ぎている */
+  #EFrame #todoList .todo-due-line.due-overdue {
+    color: #c0392b !important;   /* 赤 */
+    font-weight: bold;
+  }
+
+  /* TODOパネル全体＝上:ツールバー / 下:リスト */
+#EFrame #todoPanel{
+  display: grid;
+  grid-template-rows: auto 1fr;
+  height: 100%;
+  min-height: 0;                 
+  overflow: hidden !important;   /* ★ パネルはスクロールさせない */
+}
+
+/* リスト本体をスクロール対象に */
+#EFrame #todoList{
+  overflow: auto;
+  min-height: 0;                 /* ★ gridの子はこれ大事 */
+  max-height: 100%;
+  -webkit-overflow-scrolling: touch; /* スマホの慣性スクロール */
+  scrollbar-gutter: stable; 
+  scrollbar-width: thin;                 /* ← Firefox 用 */
+  scrollbar-color: #bbb transparent;     /* ← Firefox 用（つまみ色 / 背景） */
+}
+
+/* WebKit系（Chrome, Edge, Safari）用 */
+#EFrame #todoList::-webkit-scrollbar {
+  width: 4px;                            /* ← 太さ：ここを調整（例: 4〜8px） */
+}
+
+#EFrame #todoList::-webkit-scrollbar-thumb {
+  background-color: #bbb;                /* ← つまみ色 */
+  border-radius: 4px;                    /* ← 丸み */
+}
+
+#EFrame #todoList::-webkit-scrollbar-thumb:hover {
+  background-color: #999;                /* ← ホバー時 */
+}
+
+#EFrame #todoList::-webkit-scrollbar-track {
+  background: transparent;               /* ← 背景透明（狭く見える） */
+}
+  /* === TODO編集モーダル === */
+  #todoModalOverlay{
+    position:fixed; inset:0; background:rgba(0,0,0,.35);
+    display:none; z-index:5000;
+  }
+  #todoModal{
+    position:fixed; inset:auto; left:50%; top:50%;
+    transform:translate(-50%,-50%);
+    width:min(680px, 92vw); max-height:80vh; overflow:auto;
+    background:#fff; border:1px solid #ddd; border-radius:12px;
+    box-shadow:0 10px 30px rgba(0,0,0,.25);
+    display:none; z-index:5001; padding:16px;
+    box-sizing:border-box;
+  }
+  #todoModal .tm-head{ display:flex; align-items:center; gap:8px; padding:6px 2px 10px; border-bottom:1px solid #eee; }
+  #todoModal .tm-head strong{ font-size:14px; }
+  #todoModal .tm-body{ display:grid; gap:10px; padding:12px 2px; }
+  #todoModal .tm-row{ display:grid; grid-template-columns:120px 1fr; align-items:center; gap:8px; }
+  #todoModal input[type="text"],
+  #todoModal input[type="date"],
+  #todoModal select,
+  #todoModal textarea{
+    width:100%; height:34px; padding:0 10px; border:1px solid #ccc; border-radius:8px; font-size:14px; box-sizing:border-box;
+  }
+  #todoModal textarea{ height:200px; padding:8px 10px; resize:vertical; }
+  #todoModal .tm-actions { 
+    display: flex; 
+    gap: 10px; 
+    align-items: center; 
+    padding-top: 12px; 
+    border-top: 1px solid #eee; 
+  }
+  #todoModal button,
+  #todoModal .btn {
+    height: 36px;
+    padding: 0 14px;
+    border-radius: 10px;           /* ← 丸角を少し強めに */
+    font-size: 14px;
+    line-height: 1;
+    cursor: pointer;
+    transition: box-shadow .12s ease, transform .04s ease, background-color .12s ease, border-color .12s ease;
+    border: 1px solid #d0d5dd;
+    background: #f7f7f8;
+    color: #222;
+  }
+  /* バリアント */
+  #todoModal .primary, #tmSave {
+    background: #2b6cb0;
+    border-color: #2b6cb0;
+    color: #fff;
+  }
+  #todoModal .ghost, #tmCancel {
+    background: #fff;
+    border-color: #d0d5dd;
+    color: #333;
+  }
+  #todoModal .danger, #tmDelete {
+    background: #fff;
+    color: #c0392b;
+    border-color: #c0392b;
+  }
+　#todoModal select#tmIcon {
+  height: 34px;
+  padding: 0 10px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  width: 100%;
+  box-sizing: border-box;
+  }
+
+  /* 1行固定（折り返さない） */
+  .one-line {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* 横スクロール用のビューポート */
+  .marquee-viewport {
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* 小さい親タイトル（ヒント）にも同じ見た目を適用 */
+  .todo-parent-hint {
+    font-size: 11px;
+    line-height: 1.2;
+    color: #6b7280;
+    margin-bottom: 2px;
+  }
+
+  /* トラック */
+  .marquee-track {
+    display: inline-block;
+    will-change: transform;
+    backface-visibility: hidden;
+    transform: translateZ(0); /* GPUで安定 */
+  }
+
+  /* タイトルがはみ出してスクロールになる時だけ、2枚のあいだに1文字ぶんの余白 */
+  .marquee-viewport.is-marquee .marquee-copy {
+    padding-right: 2em; /* 1文字=1em。半角1文字なら 0.5em や 1ch でもOK */
+  }
+
+    /* === Cフレーム：フォルダボタンを必ず“従来の丸 pill 形状”に固定（強制復元）=== */
+    #bmArea #bmRail .bm-folder-btn{
+      display:inline-flex !important;
+      align-items:center !important;
+      gap:6px !important;
+      height:30px !important;
+      padding:4px 10px !important;
+      border:1px solid #d0d0d0 !important;
+      border-radius:999px !important;       /* ← ここが肝（pill 形） */
+      background:#fff !important;
+      cursor:pointer !important;
+      white-space:nowrap !important;
+      box-shadow:none !important;
+    }
+    #bmArea #bmRail .bm-folder-btn .name{
+      max-width:140px !important;
+      overflow:hidden !important;
+      text-overflow:ellipsis !important;
+      display:inline-block !important;
+      vertical-align:bottom !important;
+    }
+    #bmArea #bmRail .bm-folder-btn .caret{
+      font-size:11px !important;
+      opacity:.7 !important;
+    }
+
+    /* Cフレーム専用の上書き（検索ボタンのデザインに勝つ） */
+    #searchArea #cDataBtn{
+      all: unset;               /* 既存のボタン系リセット */
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      width:36px; height:36px;
+      box-sizing: border-box;
+      background: var(--card, #fff);
+      color:#111;               /* アイコンの線色（currentColor） */
+      border:1px solid var(--line, #e5e5e5);
+      border-radius:10px;
+      cursor:pointer;
+      margin-left:8px;
+    }
+    #searchArea #cDataBtn:hover{ background: var(--bg, #f7f7f8); }
+    #searchArea #cDataBtn:active{ transform: translateY(1px); }
+
+    #searchArea #cDataBtn svg{
+      width:22px; height:22px;
+      stroke: currentColor; fill: none; /* 念押し */
+    }
+
+
+    /* === Eフレーム：タブ（TODO / タイマー） === */
+    /* --- Eフレーム全体の器 --- */
+    #EFrame{
+      height: 100%;
+      display: grid;
+      grid-template-rows: auto 1fr;  /* 上=タブ/ツールバー, 下=本文 */
+      min-height: 0;                 /* ★ これが無いと子がはみ出す */
+    }
+
+    #EFrame .e-tabs{
+      display:flex; gap:6px; padding:6px;
+      border-bottom:1px solid #e5e5e5; background:#fff;
+      position:sticky; top:0; z-index:1;
+    }
+    #EFrame .e-tab{
+      width:34px; height:28px; padding:0;
+      display:flex; align-items:center; justify-content:center;
+      border:1px solid #ccc; border-radius:6px; background:#f8f8f8; cursor:pointer;
+      font-size:16px; line-height:1;
+    }
+    #EFrame .e-tab.active{ background:#2b6cb0; color:#fff; border-color:#2b6cb0; }
+
+    /* === タイマーパネル === */
+    #timerPanel{ overflow:auto; padding:12px; background:#fafafa; position: relative; }
+    #timerPanel .t-controls{ display:flex; gap:8px; align-items:center; justify-content:center; flex-wrap:wrap; }
+    #timerPanel .t-controls input[type="number"]{
+      width:86px; height:36px; padding:0 8px; border:1px solid #ccc; border-radius:8px; font-size:14px;
+    }
+    #timerPanel .t-controls button, #timerPanel .t-presets button{
+      height:36px; padding:0 12px; border:1px solid #d0d0d0; border-radius:8px; background:#fff; cursor:pointer;
+    }
+    #timerPanel .t-controls button.primary{ background:#2b6cb0; color:#fff; border-color:#2b6cb0; }
+    #timerPanel .t-presets{ display:flex; gap:6px; justify-content:center; flex-wrap:wrap; }
+    #timerPanel .t-note{ font-size:12px; color:#666; text-align:center; }
+
+    /* === タイマー：ドーナツ表示 === */
+    #timerPanel .t-wrap{
+      max-width:100%;
+      margin:8px auto;
+      display:grid;
+      gap:14px;
+      place-items:center;       /* 中央寄せ */
+    }
+    #timerPanel .t-progress{
+      width:100%;
+      max-width:220px;
+      aspect-ratio:1/1;
+      margin:6px 0;
+      position:relative;
+      z-index:0;                 /* 最背面 */
+      pointer-events:none;       /* ← 全部まとめて透過 */
+    }
+    
+    #timerPanel .t-progress * ,
+    #timerPanel .t-svg,
+    #timerPanel #tpBg,
+    #timerPanel #tpFg,
+    #timerPanel #tpInnerBg,
+    #timerPanel #tpInnerFg,
+    #timerPanel .t-remaining{
+      pointer-events:none !important;
+      z-index:0 !important;
+    }
+
+    /* ボタン類は確実にクリックを通す（保険） */
+    #timerPanel .t-wrap > *:not(.t-progress),
+    #timerPanel .t-controls,
+    #timerPanel .t-presets,
+    #timerPanel .t-subtabs,
+    #timerPanel #pomoInputs,
+    #timerPanel .pomo-status{
+      position:relative !important;
+      z-index:10 !important;
+      pointer-events:auto !important;
+    }
+
+    #timerPanel .t-svg{
+      display:block;
+      width:100%;
+      height:100%;
+      transform:rotate(-90deg); /* 12時スタート */
+    }
+    #timerPanel .tp-bg{ fill:none; stroke:#eee; stroke-width:12; }
+    #timerPanel .tp-fg{ fill:none; stroke:#2b6cb0; stroke-width:12; stroke-linecap:round; transition: stroke .25s linear, stroke-dasharray .2s linear; }
+
+    /* 中央の2行テキスト（位置調整はそのまま活かす） */
+    #timerPanel .t-remaining{
+      position:absolute; inset:0;
+      display:flex; flex-direction:column; align-items:center; justify-content:center;
+      text-align:center; pointer-events:none;
+    }
+    #timerPanel .t-time-main{ font-size:30px; font-weight:800; line-height:1; margin:0; }
+    #timerPanel .t-time-sub{ margin-top:6px; font-size:16px; font-weight:700; color:#666; line-height:1.1; opacity:.9; }
+    #timerPanel .t-time-sub:empty{ display:none; }
+
+    /* 🍅のときはサブ行を“少し大きく” */
+    #timerPanel.pomo-on .t-time-sub{ font-size:16px; }  /* お好みで14〜18に調整可 */
+
+    /* フラッシュ */
+    #timerPanel .t-finished .t-time-main{ animation:tflash .7s ease-in-out 4; }
+    @keyframes tflash{ 0%,100%{ background:transparent; } 50%{ background:#fff3f0; } }
+
+    /* 旧Eフレームのヘッダは非表示（新ツールバーをTODOパネル内に設置） */
+    .sidebar-right .e-head{ display:none !important; }
+
+    /* TODOパネルのレイアウト（ツールバー＋リスト） */
+    #todoPanel{ display:grid; grid-template-rows:auto 1fr; overflow:auto; background:#fafafa; }
+    #todoPanel .todo-toolbar{
+      display:flex; align-items:center; gap:6px; padding:6px;
+      background:#fff; border-bottom:1px solid #e5e5e5; position:sticky; top:0; z-index:1;
+    }
+
+    /* オーディオUI */
+    #timerPanel .btn-audio{
+      width:36px; height:36px; border:1px solid #d0d0d0; border-radius:8px;
+      background:#fff; cursor:pointer; line-height:1; display:inline-flex; align-items:center; justify-content:center;
+    }
+    #timerPanel .btn-audio.muted{ color:#e74c3c; }
+
+    /* ミュート時にボリュームバーをグレーアウト */
+    #timerPanel .t-controls.muted #tVol,
+    #timerPanel #tVol.muted{
+      filter: grayscale(1) brightness(.95);
+      opacity:.55;
+    }
+
+    /* 二重ドーナツ：内側は細く＆薄く */
+    #tpInnerBg { stroke-width:6; opacity:.5; }
+    #tpInnerFg { stroke-width:5; opacity:.6; }  /* ★外側より細い＆薄い */
+    #tpFg      { stroke-width:10; }
+
+    /* 🍅時にノーマル用のUIを隠す */
+    #timerPanel.pomo-on #tMinutes{ display:none; }
+    #timerPanel.pomo-on .t-presets{ display:none; }
+
+    /* サブタブ（⏱ / 🍅） */
+    .t-subtabs{
+      display:flex; gap:6px; align-items:center;
+      padding:6px 6px 2px; background:#fff;
+    }
+    .t-subtabs .subtab{
+      width:28px; height:28px; display:flex; align-items:center; justify-content:center;
+      border:1px solid #ccc; border-radius:6px; background:#f6f6f6; cursor:pointer;
+      font-size:16px; line-height:1;
+    }
+    .t-subtabs .subtab.active{
+      background:#2b6cb0; color:#fff; border-color:#2b6cb0;
+    }
+
+    /* ポモドーロ用の入力行を他UIに合わせる */
+    #pomoInputs{
+      display:none; /* JSで切替 */
+      gap:8px; align-items:center; justify-content:center; flex-wrap:wrap;
+    }
+    #pomoInputs label{
+      display:inline-flex; align-items:center; gap:6px;
+      background:#fff; border:1px solid #d0d0d0; border-radius:8px; padding:6px 8px;
+      font-size:14px; color:#333;
+    }
+    #pomoInputs input[type="number"]{
+      width:86px; height:32px; padding:0 8px; border:1px solid #ccc; border-radius:6px; font-size:14px; background:#fff;
+    }
+
+    /* ポモドーロ時にノーマル用UIを隠す */
+    #timerPanel.pomo-on #tMinutesWrap{ display:none !important; }
+    #timerPanel.pomo-on .t-presets{ display:none !important; }
+
+    /* ノーマル時は内側ドーナツを隠す（保険） */
+    #timerPanel:not(.pomo-on) #tpInnerBg,
+    #timerPanel:not(.pomo-on) #tpInnerFg{ display:none; }
+
+    /* ===== ポモドーロの状態ピル ===== */
+    #timerPanel .pomo-status{
+      display:none;              /* 既定は隠す（pomo-on時に表示） */
+      gap:8px;
+      align-items:center;
+      justify-content:center;
+      margin:2px 0 8px;
+      font-weight:700;
+    }
+    #timerPanel.pomo-on .pomo-status{ display:flex; }
+
+    #timerPanel .pomo-status .state{
+      padding:4px 10px;
+      border-radius:999px;
+      border:1px solid #dcdcdc;
+      background:#fff;
+      font-size:12.5px;
+      line-height:1;
+    }
+    #timerPanel .pomo-status.work  .state{ background:#eaf2ff; border-color:#c9dfff; color:#2b6cb0; font-size:15px;} /* 作業 */
+    #timerPanel .pomo-status.break .state{ background:#eaf9f1; border-color:#bfead4; color:#1b7f46; font-size:15px; } /* 休憩 */
+
+    #timerPanel .pomo-status .loop{
+      padding:3px 8px;
+      border-radius:999px;
+      border:1px solid #e4e4e4;
+      background:#fff;
+      color:#666;
+      font-size:15px;
+      line-height:1;
+    }
+
+    /* 🍅のときにノーマル用プリセットは隠す（残っていた対策） */
+    #timerPanel.pomo-on .t-presets{ display:none !important; }
+
+    /* ETA（終了予定時刻）*/
+      #timerPanel .t-time-eta{
+        font-size:11px; color:#888; line-height:1; margin-bottom:4px;
+      }
+
+    /* ポモドーロ中でも少しだけ大きめにしたい場合（任意） */
+    #timerPanel.pomo-on .t-time-eta{
+      font-size: 13px;
+    }
+
+    /* ---- ロングブレイクUIの小物 ---- */
+    #pomoInputs .sep{ width:100%; height:0; border-top:1px dashed #e5e5e5; margin:2px 0 4px; }
+    #pomoInputs .switch{
+      display:inline-flex; align-items:center; gap:6px;
+      background:#fff; border:1px solid #d0d0d0; border-radius:8px; padding:6px 8px;
+      font-size:14px;
+    }
+    /* 長休憩ブロックの基本レイアウト */
+    #pomoInputs .group{
+      display:flex;
+      gap:8px;
+      align-items:center;
+    }
+    #pomoInputs input[type="checkbox"]{ accent-color:#2b6cb0; }
+    
+    /* ✅ 長め休憩 OFF のときは、該当ラベルだけ畳む（:has を使う） */
+    #pomoInputs:not(.use-long) .group{
+      display:none !important;
+    }
+
+    /* ついでに中央寄せはそのまま維持 */
+    #pomoInputs {
+      display: flex;              /* JSでpomo-on時に見える想定 */
+      gap: 8px;
+      align-items: center;
+      justify-content: center;    /* ★中央寄せ */
+      flex-wrap: wrap;
+    }
+
+    /* .group を“ラッパ無し”扱いにして、子要素（何セット毎／長め休憩）を親の中央寄せに従わせる */
+    #pomoInputs .group { display: contents; }
+
+    /* 🍅モードのときは p omoInputs を確実に表示（inline の display:none を打ち消す） */
+    #timerPanel.pomo-on #pomoInputs{
+      display:flex !important;
+      gap:8px;
+      align-items:center;
+      justify-content:center;   /* 中央寄せ */
+      flex-wrap:wrap;
+    }
+    
+    /* ====== 登録タイマー（リスト実行） ====== */
+    #timerPanel.reg-on #pomoInputs{ display:none !important; }   /* 登録モードでは🍅UIは隠す */
+
+    #timerPanel.reg-on #regListWrap{ display:block; }
+
+    #regListWrap{
+      display:none;
+      width:100%;
+      max-width:100%;
+      box-sizing:border-box;
+      margin:4px 0 0;          /* 中央寄せ不要・幅はEフレームいっぱい */
+      background:#fff;
+      border:1px solid #e5e5e5;
+      border-radius:10px;
+      padding:8px;
+      overflow:hidden;         /* 横スクロール抑止 */
+    }
+    #regToolbar{
+      display:flex; gap:6px; align-items:center; justify-content:space-between; margin-bottom:6px;
+    }
+    #regAddBtn, .reg-btn{
+      height:28px; padding:0 10px; border:1px solid #ccc; border-radius:6px; background:#f8f8f8; cursor:pointer;
+    }
+    #regList{
+      display:grid;
+      gap:6px;
+      width:100%;
+      box-sizing:border-box;
+    }
+    
+    /* 行レイアウト：タイトル広く、分は極小、操作は最小 */
+    .reg-row{
+      display:grid;
+      grid-template-columns: 1fr 42px 46px; /* タイトル / 分 / 操作 */
+      gap:4px;                               /* 隙間をさらに詰める */
+      align-items:center;
+      padding:6px;
+      border:1px solid #eee;
+      border-radius:8px;
+      background:#fafafa;
+      width:100%;
+      box-sizing:border-box;
+    }
+
+    /* タイトルは見やすく（高さ↑、文字サイズ↑） */
+    .reg-row input[type="text"]{
+      height:26px;                /* 24→26 */
+      padding:0 8px;              /* 余白を少し増やす */
+      border:1px solid #ccc;
+      border-radius:6px;
+      min-width:0;
+      font-size:13px;             /* 12→13 */
+    }
+
+    /* 分入力はさらに小型化 */
+    .reg-row input[type="number"]{
+      width:42px;                 /* 48→42 */
+      height:22px;                /* 24→22 */
+      padding:0 4px;              /* 余白を減らす */
+      border:1px solid #ccc;
+      border-radius:6px;
+      font-size:11px;             /* 12→11 */
+    }
+
+    /* 操作ボタン：もっと小さく＆中央揃え、隙間も詰める */
+    .reg-ops{
+      display:flex;
+      gap:2px;                    /* 3→2 */
+      justify-content:flex-end;
+    }
+    
+    .reg-ops button{
+      width:16px;                 /* 18→16 */
+      height:16px;                /* 18→16 */
+      border:1px solid #ccc;
+      border-radius:5px;          /* 6→5（密度感UP） */
+      background:#fff;
+      cursor:pointer;
+      display:flex; align-items:center; justify-content:center;
+      font-size:10px;             /* 11→10 */
+      line-height:1;
+    }
+
+
+    .reg-eta{
+      grid-column:1 / -1;
+      font-size:10.5px;
+      color:#666;
+      margin-top:2px;
+      padding-left:2px;
+    }
+
+    /* 「いま対応中の予定名」をドーナツ下に表示 */
+    #currentTaskName{
+      font-weight:700;
+      font-size:13px;
+      color:#333;
+      text-align:center;
+      margin-top:-2px;
+      max-width:100%;
+      overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+    }
+
+    /* 登録モードの内側リングは活かす（区間用） */
+    #timerPanel.reg-on #tpInnerBg,
+    #timerPanel.reg-on #tpInnerFg{ display:block !important; }
+
+    /* サブタブ（⏱/🍅/📋）の新アイコン揃え */
+    #timerModeTabs .subtab{ width:28px; height:28px; }
+
+    /* === 登録モードのUI整理 === */
+    #timerPanel.reg-on #pomoInputs,
+    #timerPanel.reg-on .pomo-status,
+    #timerPanel.reg-on .t-presets,          /* ノーマルのプリセット */
+    #timerPanel.reg-on #tMinutes {           /* ノーマルの分入力 */
+      display: none !important;
+    }
+
+    /* 既存：登録UI表示切替の強化 */
+    #regListWrap{ display:none; width:100%; max-width:100%; }
+    #timerPanel.reg-on #regListWrap{ display:block; }
+
+    /* はみ出し防止（Eフレーム幅にフィット） */
+    #regListWrap { overflow:hidden; }
+    #regList { display:grid; gap:6px; }
+
+    /* 行のコンパクト化（250px幅を想定） */
+    .reg-row{
+      display:grid;
+      grid-template-columns: 1fr 35px 66px; /* タイトル / 分 / 操作 */
+      gap:3px; align-items:center;
+      padding:6px; border:1px solid #eee; border-radius:8px; background:#fafafa;
+      width:100%;
+      box-sizing:border-box;
+    }
+    .reg-row input[type="text"]{
+      height:22px; padding:0 5px; border:1px solid #ccc; border-radius:6px; min-width:0;
+      font-size:12px;
+    }
+    .reg-row input[type="number"]{
+      width:30px; height:22px; padding:0 6px; border:1px solid #ccc; border-radius:6px; font-size:12px;
+    }
+
+    /* 操作ボタンを小さく */
+    .reg-ops{ display:flex; gap:2px; justify-content:flex-end; }
+    .reg-ops button{
+      width:18px; height:22px; border:1px solid #ccc; border-radius:6px; background:#fff; cursor:pointer;
+      font-size:12px; line-height:1;
+    }
+
+    /* 各行の終了見込みを細字で */
+    .reg-eta{ grid-column:1 / -1; font-size:10.5px; color:#666; margin-top:2px; }
+
+    /* ツールバーのボタンをアイコン基調・小さめに */
+    #regToolbar{
+      display:flex;
+      gap:6px;
+      align-items:center;
+      justify-content:space-between;
+      margin:6px 0;
+    }
+    #regToolbar .reg-btn{
+      height:22px;             /* 24→22px */
+      padding:0 6px;           /* 小さめ */
+      border:1px solid #ccc;
+      border-radius:6px;
+      background:#f6f6f6;
+      font-size:11px;          /* 文字を小さく */
+      line-height:1;
+    }
+    #regToolbar .reg-btn.icon{
+      width:22px;              /* 完全アイコン用 */
+      padding:0;
+      text-align:center;
+    }
+
+    /* いまの予定名（ドーナツ下） */
+    #currentTaskName{ font-weight:700; font-size:13px; color:#333; text-align:center; margin-top:-2px; }
+
+    /* サブタブのアクティブ色が複数付かないよう保険（JSでも修正） */
+    #timerModeTabs .subtab.active{ background:#2b6cb0; color:#fff; border-color:#2b6cb0; }
+
+    /* 表示専用ビューは通常は非表示、実行中のみ出す */
+    #regView{
+      width:100%;
+      max-width:560px;  /* regListWrap に合わせる */
+      margin:4px auto 0;
+      background:#fff;
+      border:1px solid #e5e5e5;
+      border-radius:10px;
+      padding:6px 8px;
+      box-sizing:border-box;
+      display:none; margin-top:6px;
+    }
+
+    .reg-view .rv-item{
+      display:grid;
+      grid-template-columns: 1fr auto;
+      gap:6px; padding:6px 8px;
+      border:1px solid #eee; border-radius:8px; background:#fafafa;
+      margin-bottom:4px;
+    }
+
+    .reg-view .rv-item.is-current{
+      background:#e8f1fb; border-color:#b6d2f5; font-weight:600; font-size: 12px;
+    }
+    .reg-view .rv-title{
+      font-weight:600;
+      display:-webkit-box;
+      -webkit-line-clamp:2;      /* ← 表示する行数を2行に指定 */
+      -webkit-box-orient:vertical;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      white-space:normal;         /* ← nowrap を解除 */
+      line-height:1.3;            /* ← 行間の微調整（お好みで） */
+    }
+    .reg-view .rv-time{ opacity:.7; }
+
+    #timerPanel.is-running #regView { display:block; }
+
+    /* 実行中クラスで切り替え（保険として明示） */
+    #timerPanel.reg-on.is-running #regToolbar,
+    #timerPanel.reg-on.is-running #regList { display:none !important; }
+    #timerPanel.reg-on.is-running #regView { display:block !important; }
+
+    /* 表示専用の各行 */
+    .reg-view-item{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      padding:4px 6px;
+      border-bottom:1px dashed #eee;
+      border-radius:6px;
+      font-size:13px; color:#333;
+      line-height:1.2;
+      /* 250px想定のはみ出し防止 */
+      white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+      border:1px solid #f0f0f0;
+      background:#fff;
+    }
+
+    #regView .rv-item:last-child{ border-bottom:none; }
+    #regView .rv-time{ margin-left:auto; font-variant-numeric: tabular-nums; color:#666; font-size:12px; }
+    #regView .rv-item.is-current{
+      background: #fff8e6;
+      border-radius:6px;
+      outline: 1px solid #f3d08b;
+      font-weight:700;
+    }
+
+    /* “今の対応中” 強調 */
+    .reg-view-item.active{
+      background:#eaf2ff;
+      border-left:3px solid #2b6cb0;
+      font-weight:700;
+    }
+
+    /* タイトル下の現在タスク名も少し強調（任意） */
+    #currentTaskName{
+      font-weight:800;
+      font-size:14px; /* お好みで 15 に */
+    }
+
+    #regView .rv-item { display:flex; justify-content:space-between; gap:6px; padding:4px 6px; }
+    #regView .rv-item.is-current { background:#eef6ff; border-left:3px solid #2b6cb0; }
+    #regView .rv-right { text-align:right; display:grid; }
+    #regView .rv-eta { font-size:11px; opacity:.8; }
+
+    .voice-toggle{ font-size: 14px; text-align:center;}
+
+    /* === チェックリスト：パネル＆UI（Eフレーム専用） === */
+    #checklistPanel{ display:grid; grid-template-rows:auto 1fr; overflow:auto; background:#fafafa; }
+    #checklistPanel .cl-toolbar{
+      display:flex; align-items:center; gap:6px; padding:6px;
+      background:#fff; border-bottom:1px solid #e5e5e5; position:sticky; top:0; z-index:1;
+    }
+
+    /* 使う：リスト下のフッター（右寄せ） */
+    #checklistPanel .cl-foot{
+      margin-top:8px;
+      display:flex;
+      justify-content:flex-end;
+    }
+    #checklistPanel .cl-subtabs{ display:flex; gap:6px; align-items:center; }
+    
+    #checklistPanel .cl-subtab{
+      height:28px; padding:0 10px; display:flex; align-items:center; justify-content:center;
+      border:1px solid #ccc; border-radius:6px; background:#f6f6f6; cursor:pointer; font-size:13px;width:32px; height:28px; padding:0; font-size:16px;
+    }
+    #checklistPanel .cl-subtab.active{ background:#2b6cb0; color:#fff; border-color:#2b6cb0; }
+
+    /* 2-2 「使う」：チェック済みの視覚 */
+    #checklistPanel .cl-item.done .txt{
+      color:#7a7a7a;
+      text-decoration: line-through;
+      opacity:.9;
+    }
+
+    /* 2-3 進捗100%で色変更 */
+    #checklistPanel .cl-progress.complete .cl-bar > i{
+      background:#1b7f46; /* 緑系 */
+    }
+    #checklistPanel .cl-progress.complete .cl-perc{
+      color:#1b7f46;
+    }
+
+    /* 2-4 リセットボタンの差別化 */
+    #checklistPanel #clResetBtn{
+      background:#fff7e6;
+      border-color:#ffd199;
+      color:#a24b00;
+    }
+    #checklistPanel #clResetBtn:hover{
+      background:#ffedd2;
+    }
+
+    #checklistPanel .cl-body{ padding:10px; overflow:auto; }
+    #checklistPanel .cl-section{ display:none; }
+    #checklistPanel .cl-section.active{ display:block; }
+
+    #checklistPanel .cl-use-head{ display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:8px; }
+    #checklistPanel select.cl-select{
+      min-width:220px; height:34px; padding:0 10px; border:1px solid #ccc; border-radius:8px; background:#fff; font-size:14px;
+    }
+    #checklistPanel button.cl-btn{
+      height:34px; padding:0 12px; border:1px solid #d0d0d0; border-radius:8px; background:#fff; cursor:pointer; font-size:13px;
+    }
+    #checklistPanel button.cl-btn.primary{ background:#2b6cb0; color:#fff; border-color:#2b6cb0; }
+
+    #checklistPanel .cl-progress{ display:grid; gap:6px; margin:6px 0 12px; }
+    #checklistPanel .cl-progress .cl-perc{ font-weight:700; font-size:14px; color:#333; }
+    #checklistPanel .cl-progress .cl-bar{ height:10px; border-radius:999px; background:#e9eef6; overflow:hidden; border:1px solid #dfe6f1; }
+    #checklistPanel .cl-progress .cl-bar > i{ display:block; height:100%; width:0%; background:#2b6cb0; transition:width .2s ease; }
+
+    #checklistPanel .cl-items{ display:grid; gap:6px; }
+    #checklistPanel .cl-item{
+      display:flex; gap:8px; align-items:flex-start; background:#fff; border:1px solid #e6e6e6; border-radius:10px; padding:8px 10px;
+    }
+    #checklistPanel .cl-item input[type="checkbox"]{ margin-top:2px; accent-color:#2b6cb0; }
+    #checklistPanel .cl-item .txt{ flex:1; word-break:break-word;   font-size: 13px;  line-height: 1.3;}
+
+    #checklistPanel .cl-form{ display:grid; gap:8px; max-width:720px; }
+    #checklistPanel .cl-form .row{ display:grid; gap:6px; }
+    #checklistPanel .cl-form input[type="text"]{
+      height:36px; padding:0 10px; border:1px solid #ccc; border-radius:8px; background:#fff; font-size:14px;
+    }
+    #checklistPanel .cl-form .items-editor{ display:grid; gap:4px; }
+    #checklistPanel .cl-form .item-row{
+      display:grid; grid-template-columns:1fr auto; gap:4px; align-items:center;margin:0;
+    }
+    #checklistPanel .cl-form .item-row input[type="text"]{
+      height:28px;
+      padding:0 8px;
+      font-size:12px;
+      line-height:1.2;
+    }
+    #checklistPanel .cl-form .item-row .mini{
+      height:22px; padding:0 6px; border:1px solid #d0d0d0; background:#fff; cursor:pointer; font-size:10px;padding:0 3px; border-radius:6px;
+    }
+    #checklistPanel .cl-form .btns{ display:flex; gap:6px; align-items:center; flex-wrap:wrap; justify-content: center;}
+    #checklistPanel .cl-note{ font-size:12px; color:#666; }
+
+    #checklistPanel table.cl-table{
+      table-layout: fixed;
+      width: 100%;
+      border-collapse: collapse;
+      border-spacing: 0;
+    }
+    /* セルの基本（切り抜き＆省略） */
+    #checklistPanel table.cl-table th,
+    #checklistPanel table.cl-table td{
+      white-space: nowrap;
+      overflow: hidden;           /* ← はみ出し禁止（重なりを防ぐ） */
+      text-overflow: ellipsis;
+      padding: 6px 6px;
+      font-size: 12.5px;
+    }
+
+    #checklistPanel table.cl-table th{ background:#f8fafc; font-weight:700; color:#333; }
+    #checklistPanel table.cl-table tr:last-child td{ border-bottom:none; }
+    #checklistPanel .td-actions{ display:flex; gap:6px; }
+    #checklistPanel .td-actions .mini{ height:28px; padding:0 10px; border:1px solid #d0d0d0; border-radius:8px; background:#fff; cursor:pointer; font-size:12px; }
+    #checklistPanel .td-actions .mini.delete{ color:#b00020; border-color:#f0caca; background:#fff6f6; }
+
+    /* 一覧：アクション列ははみ出しを許可（見切れ防止） */
+    #checklistPanel table.cl-table td:last-child,
+    #checklistPanel table.cl-table th:last-child{
+      overflow: visible;
+      white-space: nowrap;
+      text-align: right;
+    }
+
+    /* 左列=タイトル：幅指定なし → 残り全部使う（colgroupが右列を固定） */
+    #checklistPanel table.cl-table th:nth-child(1),
+    #checklistPanel table.cl-table td:nth-child(1){
+      text-align: left;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      padding: 6px 6px;
+    }
+
+    /* 右列=操作：セル自体を右寄せ＋余白最小化 */
+    #checklistPanel table.cl-table th:nth-child(2),
+    #checklistPanel table.cl-table td:nth-child(2){
+      text-align: right;
+      padding: 6px 4px 6px 2px;   /* 右を少しだけ、左は詰める */
+      white-space: nowrap;
+      overflow: hidden;           /* セル外へはみ出さない */
+    }
+
+    /* 右列の中身（ボタンコンテナ）を“セルいっぱい”に広げて右端へ */
+    #checklistPanel table.cl-table td:nth-child(2) > .td-actions{
+      display: flex !important;
+      width: 100% !important;     /* ← ここがポイント */
+      justify-content: flex-end;  /* 右端に寄せる */
+      align-items: center;
+      gap: 4px;
+    }
+
+    /* アクション列の中身（ボタン） */
+    #checklistPanel .td-actions{
+      display: inline-flex;
+      gap: 4px;
+      justify-content: flex-end;  /* 右端に寄せる */
+      align-items: center;
+    }
+
+    /* ボタン側は折り返さず固定サイズで収める */
+    #checklistPanel .td-actions .mini{
+      flex: 0 0 auto;
+      height: 22px;
+      padding: 0 6px;
+      font-size: 11.5px;
+      border-radius: 6px;
+    }
+
+    /* 右端の“謎の空欄”除去（ボーダー／背景隙間対策） */
+    #checklistPanel table.cl-table td:last-child {
+      border-right: none;
+    }
+
+    /* 念のため：以前の“アクション列 overflow:visible”を打ち消す */
+    #checklistPanel table.cl-table td:last-child,
+    #checklistPanel table.cl-table th:last-child{
+      overflow: hidden;  /* ← 可視化ではなく切る（重なり防止） */
+    }

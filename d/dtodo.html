@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TODO一括管理ダッシュボード</title>
+  <style>
+    :root {
+      --bg: #f8fafc; --card: #ffffff; --text-main: #334155; --text-sub: #64748b;
+      --border: #e2e8f0; --accent: #3b82f6; --good: #10b981; --bad: #f43f5e; --track: #f1f5f9;
+    }
+    body { margin: 0; background: var(--bg); color: var(--text-main); font-family: system-ui, sans-serif; line-height: 1.4; }
+    
+    header {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(4px);
+      border-bottom: 1px solid var(--border); padding: 8px 16px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+      display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;
+    }
+    
+    .kpi-container { display: flex; gap: 8px; margin: 0; }
+    .kpi-card { background: var(--card); padding: 4px 10px; border-radius: 6px; border: 1px solid var(--border); min-width: 70px; }
+    .kpi-label { font-size: 10px; color: var(--text-sub); font-weight: 700; }
+    .kpi-value { font-size: 16px; font-weight: 800; color: var(--accent); line-height: 1.2; }
+    
+    .controls { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; font-size: 11px; }
+    .search-input { width: 140px; padding: 4px 8px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 12px; }
+    .sort-select { padding: 4px 8px; border: 1px solid #cbd5e1; border-radius: 4px; background: #fff; font-size: 12px; cursor: pointer; }
+    .filter-label { display: flex; align-items: center; gap: 4px; cursor: pointer; font-weight: 500; white-space: nowrap; }
+
+    .list-container { 
+      padding: 16px; max-width: 1200px; margin: 0 auto; 
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(400px, 1fr)); gap: 16px; align-items: start;
+    }
+    .empty-state { grid-column: 1 / -1; text-align: center; padding: 40px; color: var(--text-sub); font-size: 13px; }
+
+    .task-group {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 8px; overflow: hidden; box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+      display: flex; flex-direction: column;
+    }
+    
+    .todo-root {
+      display: flex; flex-direction: column; gap: 8px; padding: 12px 14px; border-left: 4px solid var(--accent);
+    }
+    .todo-root.is-done { border-left-color: #cbd5e1; opacity: 0.6; }
+    .todo-root.is-done .todo-title span { text-decoration: line-through; color: var(--text-sub); }
+
+    .todo-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+    
+    .todo-checkbox {
+      width: 18px; height: 18px; margin: 0; margin-top: 2px;
+      cursor: pointer; accent-color: var(--accent); flex-shrink: 0;
+    }
+
+    .todo-title-wrap { flex: 1; min-width: 0; }
+    .todo-title { font-size: 14px; font-weight: 700; display: flex; align-items: center; gap: 6px; }
+    .todo-memo { font-size: 11px; color: var(--text-sub); margin-top: 4px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    
+    .todo-meta { display: flex; align-items: center; gap: 8px; flex-shrink: 0; font-size: 11px; }
+    .status-badge { padding: 2px 6px; border-radius: 4px; font-weight: 700; white-space: nowrap; }
+    .status-good { background: #d1fae5; color: #047857; }
+    .status-bad { background: #ffe4e6; color: #e11d48; }
+    .status-done { background: #f1f5f9; color: #475569; }
+    
+    .due-date { font-weight: 600; color: var(--text-sub); white-space: nowrap; }
+    
+    .btn-edit { background: transparent; border: 1px solid #e2e8f0; color: var(--text-sub); cursor: pointer; padding: 2px 8px; border-radius: 4px; transition: 0.2s; white-space: nowrap; height: 22px; display: flex; align-items: center; }
+    .btn-edit:hover { background: #f1f5f9; color: var(--accent); border-color: #cbd5e1; }
+
+    .progress-area { width: 100%; display: flex; flex-direction: column; justify-content: center; margin-top: 4px; }
+    .progress-text { display: flex; justify-content: space-between; font-size: 10px; font-weight: 600; margin-bottom: 4px; color: var(--text-main); }
+    .progress-bar { position: relative; height: 6px; background: var(--track); border-radius: 3px; }
+    .progress-fill { height: 100%; border-radius: 3px; transition: width 0.3s; }
+    .ideal-line { position: absolute; top: -3px; bottom: -3px; width: 2px; background: #0f172a; z-index: 2; border-radius: 1px; }
+    .ideal-line::before { content: ''; position: absolute; top: -4px; left: -3px; border-left: 4px solid transparent; border-right: 4px solid transparent; border-top: 5px solid #0f172a; }
+
+    .children-container { border-top: 1px solid var(--border); background: #fdfdfd; padding: 6px 0; }
+    .todo-child { display: flex; justify-content: space-between; align-items: center; padding: 4px 14px; font-size: 11px; border-left: 1px dashed #cbd5e1; gap: 8px;}
+    .todo-child.is-done { color: var(--text-sub); text-decoration: line-through; }
+    .todo-child-left { display: flex; align-items: center; gap: 6px; flex: 1; min-width: 0; }
+    .todo-child-left span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="kpi-container">
+      <div class="kpi-card"><div class="kpi-label">全タスク</div><div class="kpi-value" id="kpiTotal">0</div></div>
+      <div class="kpi-card"><div class="kpi-label">未完了</div><div class="kpi-value" id="kpiPending">0</div></div>
+    </div>
+    <div class="controls">
+      <input type="text" class="search-input" id="searchInput" placeholder="検索...">
+      <select id="sortOrder" class="sort-select">
+        <option value="diff">遅れが大きい順（優先）</option>
+        <option value="due">期限が近い順</option>
+      </select>
+      <label class="filter-label"><input type="checkbox" id="chkCompleted"> 完了済も表示</label>
+      <label class="filter-label"><input type="checkbox" id="chkNoDue" checked> 期日なし含める</label>
+      <label class="filter-label"><input type="checkbox" id="chkShowBacklog" checked> 課題も含める</label>
+    </div>
+  </header>
+
+  <main class="list-container" id="todoList"></main>
+
+  <script>
+    (function() {
+      const STORAGE_KEY = 'todosV1';
+      const BACKLOG_KEY = 'D_BACKLOG_V1';
+      
+      const el = { 
+        list: document.getElementById('todoList'), 
+        search: document.getElementById('searchInput'), 
+        sort: document.getElementById('sortOrder'), 
+        chkComp: document.getElementById('chkCompleted'), 
+        chkNoDue: document.getElementById('chkNoDue'), 
+        chkBacklog: document.getElementById('chkShowBacklog'),
+        kpiTotal: document.getElementById('kpiTotal'), 
+        kpiPending: document.getElementById('kpiPending') 
+      };
+
+      function getTodayYmd() {
+        const d = new Date();
+        return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+      }
+
+      function calcIdeal(start, due) {
+        if (!start || !due) return 0;
+        const s = new Date(start).getTime(), d = new Date(due).getTime(), n = Date.now();
+        if (n < s) return 0; if (n > d) return 100;
+        return Math.round(((n - s) / (d - s)) * 100);
+      }
+      function calcActual(task) {
+        if (task._isBacklog) return task.done ? 100 : (task._rawStatus === 'doing' || task._rawStatus === 'review' ? 50 : 0);
+        if (!task.subtasks || task.subtasks.length === 0) return task.done ? 100 : 0;
+        const total = task.subtasks.length, doneCount = task.subtasks.filter(s => s.done).length;
+        return Math.round((doneCount / total) * 100);
+      }
+      
+      function buildTree(subtasks) {
+        if (!subtasks || subtasks.length === 0) return [];
+        const map = {}, roots = [];
+        subtasks.forEach(s => { s.children = []; map[s.id] = s; });
+        subtasks.forEach(s => { if (s.parentSubId && map[s.parentSubId]) { map[s.parentSubId].children.push(s); } else { roots.push(s); } });
+        return roots;
+      }
+
+      function updateBacklogHierarchy(issues, clickedId, isDone) {
+        const target = issues.find(i => i.id === clickedId);
+        if (!target) return;
+
+        function propagateDown(parentId) {
+          issues.filter(i => i.parentId === parentId).forEach(child => {
+            child.status = isDone ? 'done' : 'todo';
+            propagateDown(child.id);
+          });
+        }
+        target.status = isDone ? 'done' : 'todo';
+        propagateDown(target.id);
+
+        function propagateUp(parentId) {
+          if (!parentId) return;
+          const parent = issues.find(i => i.id === parentId);
+          if (!parent) return;
+
+          const children = issues.filter(i => i.parentId === parentId);
+          const allDone = children.every(c => c.status === 'done' || c.status === 'omit');
+          const someDoing = children.some(c => c.status === 'doing' || c.status === 'review' || (c.status === 'done' && !allDone));
+
+          if (allDone) {
+            parent.status = 'done';
+          } else if (someDoing) {
+            parent.status = 'doing';
+          } else {
+            parent.status = 'todo';
+          }
+          
+          let minStart = null, maxDue = null;
+          children.forEach(c => {
+            if (c.startDate) { if (!minStart || c.startDate < minStart) minStart = c.startDate; }
+            if (c.dueDate) { if (!maxDue || c.dueDate > maxDue) maxDue = c.dueDate; }
+          });
+          if (minStart) parent.startDate = minStart;
+          if (maxDue) parent.dueDate = maxDue;
+
+          propagateUp(parent.parentId);
+        }
+        propagateUp(target.parentId);
+      }
+
+      function updateTodoHierarchy(todoData, clickedId, isDone) {
+        const today = getTodayYmd();
+        let root = todoData.find(t => t.id === clickedId);
+        if (root) {
+          root.done = isDone;
+          root.doneAt = isDone ? today : '';
+          if (root.subtasks) {
+            root.subtasks.forEach(s => { s.done = isDone; s.doneAt = isDone ? today : ''; });
+          }
+        } else {
+          todoData.forEach(t => {
+            if (!t.subtasks) return;
+            const sub = t.subtasks.find(s => s.id === clickedId);
+            if (sub) {
+              sub.done = isDone;
+              sub.doneAt = isDone ? today : '';
+              const allSubsDone = t.subtasks.every(s => s.done);
+              t.done = allSubsDone;
+              t.doneAt = allSubsDone ? today : '';
+            }
+          });
+        }
+      }
+
+      function render() {
+        let originalTodos = [];
+        try { originalTodos = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]').filter(t => t && t.id); } catch(e) { originalTodos = []; }
+
+        let backlogTodos = [];
+        if (el.chkBacklog.checked) {
+          try {
+            const backlogData = JSON.parse(localStorage.getItem(BACKLOG_KEY) || '{"issues":[]}');
+            const syncIssues = backlogData.issues.filter(i => i.syncTodo);
+            const backlogRoots = syncIssues.filter(i => {
+              if (!i.parentId) return true;
+              return !syncIssues.find(p => p.id === i.parentId);
+            });
+
+            function convertBacklogToTodo(issue) {
+              const children = syncIssues.filter(i => i.parentId === issue.id).map(convertBacklogToTodo);
+              return {
+                id: issue.id,
+                title: '[課題] ' + issue.title,
+                memo: issue.description,
+                startDate: issue.startDate,
+                dueDate: issue.dueDate,
+                done: issue.status === 'done' || issue.status === 'omit',
+                icon: '🎯',
+                _isBacklog: true,
+                _rawStatus: issue.status,
+                subtasks: children.length > 0 ? children : undefined
+              };
+            }
+            
+            const todayYmd = getTodayYmd();
+            backlogTodos = backlogRoots.map(convertBacklogToTodo).filter(t => {
+              if (t.startDate && t.startDate > todayYmd) return false;
+              return true;
+            });
+          } catch (e) {}
+        }
+
+        let allTodos = [...originalTodos, ...backlogTodos];
+
+        const keyword = el.search.value.toLowerCase();
+        const sortMode = el.sort.value;
+        const showComp = el.chkComp.checked;
+        const showNoDue = el.chkNoDue.checked;
+
+        let filtered = allTodos.filter(t => {
+          if (!showComp && t.done) return false;
+          if (!showNoDue && !t.dueDate) return false;
+          const text = ((t.title || '') + ' ' + (t.memo || '')).toLowerCase();
+          if (keyword && !text.includes(keyword)) return false;
+          return true;
+        });
+
+        filtered.forEach(t => { 
+          t._actual = calcActual(t); 
+          t._ideal = calcIdeal(t.startDate, t.dueDate); 
+          t._diff = t._actual - t._ideal; 
+        });
+
+        if (sortMode === 'due') {
+          filtered.sort((a, b) => (a.dueDate || '9999-99-99').localeCompare(b.dueDate || '9999-99-99'));
+        } else {
+          filtered.sort((a, b) => { if (a.done !== b.done) return a.done ? 1 : -1; return a._diff - b._diff; });
+        }
+
+        el.list.innerHTML = '';
+        let pendingCount = 0;
+
+        if (filtered.length === 0) { el.list.innerHTML = '<div class="empty-state">表示するタスクがありません</div>'; }
+
+        filtered.forEach(task => {
+          if (!task.done) pendingCount++;
+          const isGood = task._diff >= 0;
+          let badgeHtml = task.done ? `<span class="status-badge status-done">完了</span>` : (isGood ? `<span class="status-badge status-good">ON TRACK</span>` : `<span class="status-badge status-bad">遅れ ${task._diff}%</span>`);
+
+          const group = document.createElement('div');
+          group.className = 'task-group';
+
+          let html = `
+            <div class="todo-root ${task.done ? 'is-done' : ''}">
+              <div class="todo-header">
+                <input type="checkbox" class="todo-checkbox" data-id="${task.id}" data-type="${task._isBacklog ? 'backlog' : 'todo'}" ${task.done ? 'checked' : ''}>
+                <div class="todo-title-wrap">
+                  <div class="todo-title"><span>${task.icon || '📝'} ${task.title || '(無題)'}</span></div>
+                  ${task.memo ? `<div class="todo-memo">${task.memo}</div>` : ''}
+                </div>
+                <div class="todo-meta">
+                  ${badgeHtml}
+                  <div class="due-date">${task.dueDate ? '〆 ' + task.dueDate : '-'}</div>
+                  <button class="btn-edit" data-id="${task.id}" data-type="${task._isBacklog ? 'backlog' : 'todo'}">✎</button>
+                </div>
+              </div>
+              <div class="progress-area">
+                <div class="progress-text"><span>実績: ${task._actual}%</span><span style="color:var(--text-sub);">理想: ${task._ideal}%</span></div>
+                <div class="progress-bar">
+                  <div class="progress-fill" style="width: ${task._actual}%; background: ${task.done ? '#cbd5e1' : (isGood ? 'var(--good)' : 'var(--bad)')};"></div>
+                  <div class="ideal-line" style="left: ${task._ideal}%;" title="ここまでに終わっているべきライン"></div>
+                </div>
+              </div>
+            </div>
+          `;
+
+          // ★ 変更：Backlog由来のタスクはbuildTreeを通さずにそのまま描画
+          let tree = [];
+          if (task._isBacklog) {
+            tree = task.subtasks || [];
+          } else {
+            tree = buildTree(task.subtasks);
+          }
+
+          if (tree.length > 0) {
+            html += `<div class="children-container">`;
+            function buildChildHtml(nodes, depth) {
+              let res = '';
+              nodes.forEach(node => {
+                const ml = 14 + (depth * 20);
+                res += `<div class="todo-child ${node.done ? 'is-done' : ''}" style="margin-left: ${ml}px;">
+                          <div class="todo-child-left">
+                            <input type="checkbox" class="todo-checkbox" data-id="${node.id}" data-type="${node._isBacklog ? 'backlog' : 'todo'}" ${node.done ? 'checked' : ''}>
+                            <span>${node.title || '(無題)'}</span>
+                          </div>
+                          <span>${node.dueDate ? '〆 ' + node.dueDate : ''}</span>
+                        </div>`;
+                if (node.children) res += buildChildHtml(node.children, depth + 1);
+              });
+              return res;
+            }
+            html += buildChildHtml(tree, 0) + `</div>`;
+          }
+
+          group.innerHTML = html;
+          el.list.appendChild(group);
+        });
+
+        el.kpiTotal.textContent = allTodos.length; el.kpiPending.textContent = pendingCount;
+      }
+
+      el.search.addEventListener('input', render); 
+      el.sort.addEventListener('change', render); 
+      el.chkComp.addEventListener('change', render); 
+      el.chkNoDue.addEventListener('change', render);
+      el.chkBacklog.addEventListener('change', render);
+      
+      el.list.addEventListener('click', e => {
+        const btn = e.target.closest('.btn-edit');
+        if (btn) {
+          if (btn.dataset.type === 'backlog') {
+            window.parent.postMessage({ type: 'D_SWITCH_TAB', tab: 'goals' }, '*');
+          } else {
+            window.open('../todo.html?id=' + btn.dataset.id, 'todo_edit', 'width=520,height=650,resizable=yes');
+          }
+        }
+      });
+
+      el.list.addEventListener('change', e => {
+        if (e.target.classList.contains('todo-checkbox')) {
+          const id = e.target.dataset.id;
+          const isBacklog = e.target.dataset.type === 'backlog';
+          const isDone = e.target.checked;
+
+          if (isBacklog) {
+            const backlogData = JSON.parse(localStorage.getItem(BACKLOG_KEY) || '{"issues":[]}');
+            updateBacklogHierarchy(backlogData.issues, id, isDone);
+            localStorage.setItem(BACKLOG_KEY, JSON.stringify(backlogData));
+            render();
+          } else {
+            const todoData = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+            updateTodoHierarchy(todoData, id, isDone);
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(todoData));
+            render();
+          }
+          try { window.parent.postMessage({ type:'todo:saved' }, '*'); } catch(e){}
+        }
+      });
+
+      render(); 
+      setInterval(render, 2000); 
+      window.addEventListener('message', e => { if (e.data?.type === 'todo:saved') render(); });
+    })();
+  </script>
+</body>
+</html>

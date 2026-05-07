@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<title>URLブックマーク管理</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="stylesheet" href="./css/bookmarks.css">
+</head>
+<body>
+
+<header>
+  <h1>📑 URLブックマーク管理</h1>
+  <div class="spacer"></div>
+  <div class="toolbar">
+    <button class="btn warning" id="recoverBtn" title="消えてしまった過去のデータを復元します">🛠 旧データ復元</button>
+    <button class="btn" id="addFolderBtn">📂 フォルダ追加</button>
+    <button class="btn primary" id="addBmBtn">＋ URLを追加</button>
+  </div>
+</header>
+
+<main>
+  <div class="folder-grid" id="folderGrid"></div>
+</main>
+
+<dialog id="editModal">
+  <div class="dlg-content">
+    <h3 id="modalTitle">ブックマークを登録</h3>
+    <div class="field">
+      <label>URL</label>
+      <input type="text" id="inUrl" placeholder="https://...">
+    </div>
+    <div class="field">
+      <label>タイトル <span style="font-weight:normal; font-size:10px;">(空欄の場合は自動取得します)</span></label>
+      <input type="text" id="inTitle" placeholder="ページタイトル">
+    </div>
+    <div class="field">
+      <label>保存先フォルダ</label>
+      <select id="inFolder"></select>
+    </div>
+    <div class="dlg-btns">
+      <button class="btn" id="btnDel" style="color:var(--danger); border-color:var(--danger); margin-right:auto;">削除</button>
+      <button class="btn" id="btnCancel">キャンセル</button>
+      <button class="btn primary" id="btnSave">保存する</button>
+    </div>
+  </div>
+</dialog>
+
+<script src="./js/bookmarks.js"></script>
+</body>
+</html>

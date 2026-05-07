@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Dメモ（CatMemoNote風）</title>
+  <style>
+    :root {
+      --bg: #f8fafc; 
+      --card: #ffffff; 
+      --line: #e2e8f0; 
+      --accent: #3b82f6; 
+      --text: #334155; 
+      --muted: #64748b;
+      --hover: #f1f5f9;
+      --danger: #f43f5e;
+    }
+    html, body { height: 100%; margin: 0; }
+    body {
+      background: var(--bg);
+      font-family: system-ui, -apple-system, sans-serif;
+      color: var(--text);
+      display: flex;
+      min-height: 0;
+      font-size: 13px;
+    }
+    * { box-sizing: border-box; }
+
+    #app { display: flex; width: 100%; height: 100%; }
+
+    /* サイドバー */
+    #sidebar {
+      width: 240px; flex: 0 0 240px; background: var(--bg);
+      border-right: 1px solid var(--line); display: flex; flex-direction: column;
+    }
+    .side-header {
+      padding: 12px; font-weight: 700; color: #1e293b;
+      display: flex; align-items: center; justify-content: space-between;
+      border-bottom: 1px solid var(--line);
+    }
+    .icon-btn {
+      width: 24px; height: 24px; padding: 0; border: 1px solid #cbd5e1; border-radius: 6px;
+      background: #fff; color: var(--muted); cursor: pointer; display: flex;
+      align-items: center; justify-content: center; font-size: 16px; transition: 0.2s;
+    }
+    .icon-btn:hover { background: var(--hover); color: var(--accent); border-color: var(--accent); }
+    
+    #folderList { 
+      flex: 1; overflow-y: auto; padding: 8px; display: flex; flex-direction: column; gap: 4px; 
+      min-height: 100px;
+    }
+    
+    .folder-item {
+      padding: 8px; border-radius: 6px; cursor: pointer;
+      display: flex; align-items: center; gap: 4px; color: var(--text); font-weight: 500; transition: 0.1s;
+    }
+    .folder-item:hover { background: #e2e8f0; }
+    .folder-item.active { background: var(--accent); color: #fff; }
+    
+    .folder-item.drag-over { background: #e2e8f0; box-shadow: inset 0 0 0 2px var(--accent); }
+    .folder-item.dragging { opacity: 0.5; }
+    
+    .f-toggle { width: 16px; text-align: center; font-size: 10px; color: var(--muted); cursor: pointer; display: inline-block; }
+    .folder-item:hover .f-toggle, .folder-item.active .f-toggle { color: inherit; }
+    
+    .folder-item .f-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; pointer-events: none; }
+    
+    .f-ctrls { display: flex; gap: 2px; opacity: 0; transition: 0.2s; }
+    .folder-item:hover .f-ctrls { opacity: 1; }
+    .f-btn { font-size: 11px; padding: 2px 4px; border-radius: 4px; color: var(--muted); font-weight: 700; }
+    .folder-item.active .f-btn { color: rgba(255,255,255,0.8); }
+    .f-btn:hover { background: rgba(0,0,0,0.1); color: var(--text); }
+    .folder-item.active .f-btn:hover { color: #fff; }
+
+    /* メインエリア */
+    #main { flex: 1; display: flex; flex-direction: column; min-width: 0; background: var(--card); }
+
+    /* タブバー */
+    .tab-bar {
+      display: flex; background: #f1f5f9; border-bottom: 1px solid var(--line);
+      padding: 6px 6px 0 6px; gap: 4px; overflow-x: auto; scrollbar-width: none;
+    }
+    .tab-bar::-webkit-scrollbar { display: none; }
+    
+    .tab {
+      display: flex; align-items: center; gap: 6px; height: 32px; padding: 0 10px;
+      background: #e2e8f0; border: 1px solid #cbd5e1; border-bottom: none;
+      border-radius: 8px 8px 0 0; color: var(--muted); cursor: pointer;
+      min-width: 80px; max-width: 160px; transition: background 0.2s, box-shadow 0.1s; position: relative;
+    }
+    .tab:hover { background: #f8fafc; }
+    .tab.active { background: var(--card); color: var(--accent); border-color: var(--line); font-weight: 600; }
+    .tab.active::after { content: ''; position: absolute; bottom: -1px; left: 0; right: 0; height: 2px; background: var(--card); }
+    
+    /* ★ タブの並べ替え時のガイド用スタイル */
+    .tab.dragging { opacity: 0.4; background: #cbd5e1; }
+    .tab.drag-over-left { box-shadow: inset 3px 0 0 var(--accent); }
+    .tab.drag-over-right { box-shadow: inset -3px 0 0 var(--accent); }
+
+    .tab .t-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; pointer-events: none; }
+    .tab .t-close {
+      font-size: 10px; color: var(--muted); opacity: 0; width: 16px; height: 16px;
+      display: flex; align-items: center; justify-content: center; border-radius: 50%;
+    }
+    .tab:hover .t-close, .tab.active .t-close { opacity: 0.5; }
+    .tab .t-close:hover { opacity: 1; background: #e2e8f0; color: var(--danger); }
+
+    .add-tab-btn {
+      height: 28px; width: 28px; margin-top: 4px; flex: 0 0 auto;
+      display: flex; align-items: center; justify-content: center;
+      border: 1px dashed #cbd5e1; border-radius: 6px; color: var(--muted); cursor: pointer;
+    }
+    .add-tab-btn:hover { background: #e2e8f0; color: var(--accent); border-color: var(--accent); }
+
+    /* エディタ */
+    .editor-wrap { flex: 1; display: flex; flex-direction: column; padding: 20px; overflow: hidden; }
+    .no-selection { flex: 1; display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 14px; }
+    .editor-title { font-size: 18px; font-weight: 700; color: #1e293b; border: none; border-bottom: 2px solid transparent; padding: 4px 0; margin-bottom: 12px; outline: none; transition: 0.2s; }
+    .editor-title:focus { border-bottom-color: var(--line); }
+    .editor-content { flex: 1; border: none; resize: none; outline: none; font-family: inherit; font-size: 14px; line-height: 1.6; color: var(--text); background: transparent; padding: 0; }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <aside id="sidebar">
+      <div class="side-header">
+        📂 フォルダ
+        <button class="icon-btn" id="addFolderBtn" title="ルートフォルダを新規作成">＋</button>
+      </div>
+      <div id="folderList"></div>
+    </aside>
+
+    <main id="main">
+      <div class="tab-bar" id="tabBar"></div>
+      <div class="editor-wrap" id="editorWrap" style="display: none;">
+        <input type="text" id="memoTitle" class="editor-title" placeholder="メモのタイトル..." />
+        <textarea id="memoContent" class="editor-content" placeholder="ここにメモを入力..."></textarea>
+      </div>
+      <div class="no-selection" id="noSelection">
+        フォルダとメモを選択してください
+      </div>
+    </main>
+  </div>
+
+  <script src="dmemo.js"></script>
+</body>
+</html>

@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>Dフレーム：課題・目標管理</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    :root {
+      --bg: #f8fafc; 
+      --card: #ffffff; 
+      --line: #e2e8f0; 
+      --accent: #3b82f6; 
+      --text: #334155; 
+      --muted: #64748b;
+      --hover: #f1f5f9;
+      --danger: #f43f5e;
+      
+      /* ステータスカラー */
+      --st-todo: #94a3b8;       /* 未着手 (グレー) */
+      --st-doing: #3b82f6;      /* 対応中 (青) */
+      --st-review: #f59e0b;     /* 確認中 (黄) */
+      --st-done: #10b981;       /* 完了 (緑) */
+      --st-omit: #f43f5e;       /* オミット (赤) */
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; }
+    body {
+      background: var(--bg);
+      font-family: system-ui, -apple-system, sans-serif;
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+      font-size: 13px;
+    }
+
+    /* ヘッダー＆タブ */
+    .header {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 10px 16px; background: var(--card); border-bottom: 1px solid var(--line);
+    }
+    .header-title { font-weight: 700; font-size: 15px; color: #1e293b; display:flex; align-items:center; gap:8px;}
+    .view-tabs { display: flex; background: var(--hover); border: 1px solid var(--line); border-radius: 8px; padding: 2px; }
+    .view-tabs button {
+      appearance: none; border: none; background: transparent; padding: 4px 16px; border-radius: 6px;
+      font-size: 12px; font-weight: 600; color: var(--muted); cursor: pointer; transition: 0.2s;
+    }
+    .view-tabs button.active { background: var(--card); color: var(--accent); box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    .btn { appearance: none; border: 1px solid var(--line); background: var(--card); border-radius: 6px; padding: 4px 10px; font-size: 12px; cursor: pointer; color: var(--text); }
+    .btn:hover { background: var(--hover); }
+    .btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .btn.primary:hover { background: #2563eb; }
+
+    /* メインレイアウト */
+    #app-body { flex: 1; display: flex; min-height: 0; overflow: hidden; }
+    
+    /* 共通ビューコンテナ */
+    .view-container { flex: 1; display: none; flex-direction: column; overflow: hidden; position: relative; }
+    .view-container.active { display: flex; }
+
+    /* 右側：詳細パネル */
+    #detail-panel {
+      width: 320px; flex: 0 0 320px; background: var(--card); border-left: 1px solid var(--line);
+      display: flex; flex-direction: column; transform: translateX(100%); transition: transform 0.2s;
+      position: absolute; right: 0; top: 0; bottom: 0; z-index: 100; box-shadow: -4px 0 15px rgba(0,0,0,0.05);
+    }
+    #detail-panel.open { transform: translateX(0); }
+    .dp-header { display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid var(--line); font-weight: 600; }
+    .dp-close { cursor: pointer; color: var(--muted); font-size: 16px; border:none; background:transparent; padding:0 4px; }
+    .dp-body { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 16px; }
+    
+    .form-group { display: flex; flex-direction: column; gap: 4px; }
+    .form-group label { font-size: 11px; font-weight: 600; color: var(--muted); }
+    .form-group input[type="text"], .form-group input[type="date"], .form-group select, .form-group textarea {
+      width: 100%; border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; font-size: 13px; font-family: inherit; color: var(--text);
+    }
+    .form-group textarea { resize: vertical; min-height: 60px; }
+    .form-row { display: flex; gap: 12px; }
+    .form-row > div { flex: 1; }
+
+    /* TODO連携トグル */
+    .todo-sync-wrap { display: flex; align-items: center; gap: 8px; padding: 8px; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px; }
+    .todo-sync-wrap label { color: #1e40af; cursor: pointer; display: flex; align-items: center; gap: 4px; font-size: 12px;}
+
+    /* 進捗メモ（コメント） */
+    .comments-area { border-top: 1px dashed var(--line); padding-top: 16px; display: flex; flex-direction: column; gap: 12px; }
+    .comment-item { background: var(--hover); padding: 8px; border-radius: 6px; font-size: 12px; }
+    .comment-meta { display: flex; justify-content: space-between; font-size: 10px; color: var(--muted); margin-bottom: 4px; }
+    .comment-text { white-space: pre-wrap; word-break: break-word; }
+    .comment-input-wrap { display: flex; flex-direction: column; gap: 4px; }
+
+    /* ステータスバッジ */
+    .st-badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 10px; font-weight: 600; color: #fff; }
+    .st-todo { background: var(--st-todo); }
+    .st-doing { background: var(--st-doing); }
+    .st-review { background: var(--st-review); }
+    .st-done { background: var(--st-done); }
+    .st-omit { background: var(--st-omit); }
+
+    /* ＝＝＝ ツリー（一覧）ビュー ＝＝＝ */
+    .tree-table { width: 100%; border-collapse: collapse; }
+    .tree-table th { position: sticky; top: 0; background: var(--hover); border-bottom: 1px solid var(--line); padding: 8px 12px; text-align: left; font-size: 11px; color: var(--muted); z-index: 10; }
+    .tree-table td { padding: 8px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+    .tree-row { cursor: pointer; transition: 0.1s; }
+    .tree-row:hover { background: #f8fafc; }
+    .tree-row.active { background: #eff6ff; }
+    .t-title-col { display: flex; align-items: center; gap: 6px; }
+    .t-toggle { width: 16px; cursor: pointer; color: var(--muted); font-size: 10px; text-align: center; }
+    .t-add-sub { font-size: 10px; padding: 2px 4px; color: var(--accent); border: 1px solid var(--accent); border-radius: 4px; background: transparent; cursor: pointer; opacity: 0; }
+    .tree-row:hover .t-add-sub { opacity: 1; }
+    .t-add-sub:hover { background: var(--accent); color: #fff; }
+
+    /* ＝＝＝ ボードビュー ＝＝＝ */
+    .board-wrap { display: flex; height: 100%; overflow-x: auto; padding: 16px; gap: 16px; background: #f1f5f9; }
+    .board-col { flex: 0 0 280px; display: flex; flex-direction: column; background: var(--hover); border-radius: 8px; max-height: 100%; }
+    .board-col-head { padding: 10px 12px; font-weight: 600; font-size: 13px; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid transparent;}
+    .board-col-head.st-todo { border-color: var(--st-todo); }
+    .board-col-head.st-doing { border-color: var(--st-doing); }
+    .board-col-head.st-review { border-color: var(--st-review); }
+    .board-col-head.st-done { border-color: var(--st-done); }
+    .board-col-head.st-omit { border-color: var(--st-omit); }
+    .col-count { font-size: 11px; color: var(--muted); background: #e2e8f0; padding: 2px 8px; border-radius: 999px; }
+    .board-cards { flex: 1; overflow-y: auto; padding: 8px; display: flex; flex-direction: column; gap: 8px; min-height: 100px; }
+    .board-cards.drag-over { background: rgba(0,0,0,0.03); border-radius: 6px; }
+    
+    .b-card { background: var(--card); border: 1px solid var(--line); border-radius: 6px; padding: 10px; cursor: grab; box-shadow: 0 1px 2px rgba(0,0,0,0.05); transition: 0.1s; }
+    .b-card:active { cursor: grabbing; }
+    .b-card:hover { border-color: var(--accent); }
+    .b-card.dragging { opacity: 0.5; }
+    .b-card-title { font-weight: 600; margin-bottom: 6px; font-size: 12px; }
+    .b-card-meta { display: flex; justify-content: space-between; font-size: 10px; color: var(--muted); align-items: center;}
+
+    /* ＝＝＝ ガントチャートビュー ＝＝＝ */
+    .gantt-wrap { display: flex; height: 100%; flex-direction: column; overflow: hidden; }
+    .gantt-ctrl { display: flex; gap: 12px; padding: 8px 16px; background: var(--card); border-bottom: 1px solid var(--line); align-items: center; }
+    .gantt-body { display: flex; flex: 1; overflow: auto; position: relative; }
+    .gantt-left { flex: 0 0 240px; background: var(--card); border-right: 1px solid var(--line); position: sticky; left: 0; z-index: 20; }
+    .gantt-right { flex: 1; min-width: 800px; background: #fff; position: relative; }
+    
+    .g-row { display: flex; align-items: center; height: 32px; border-bottom: 1px solid var(--line); box-sizing: border-box; }
+    .gantt-left .g-row { padding: 0 10px; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
+    .gantt-left .g-row:hover { background: var(--hover); }
+    .g-row-head { font-weight: 600; background: var(--hover); position: sticky; top: 0; z-index: 10; color: var(--muted); font-size: 11px;}
+    
+    /* ガントのグリッド描画 */
+    .gantt-grid { position: absolute; top: 0; bottom: 0; left: 0; right: 0; display: flex; pointer-events: none; }
+    .g-col { flex: 1; border-right: 1px dashed var(--line); display: flex; flex-direction: column; align-items: center; }
+    .g-col-date { height: 32px; font-size: 10px; color: var(--muted); display: flex; align-items: center; justify-content: center; border-bottom: 1px solid var(--line); width:100%; background:var(--hover);}
+    .g-col.is-today { background: rgba(59,130,246,0.05); border-right: 1px solid rgba(59,130,246,0.3); }
+    
+    /* バーの配置領域 */
+    .gantt-bars { position: absolute; top: 32px; left: 0; right: 0; bottom: 0; }
+    .g-bar-wrap { position: absolute; height: 32px; display: flex; align-items: center; }
+    .g-bar { height: 16px; border-radius: 4px; min-width: 4px; cursor: pointer; position: relative; transition: 0.1s; box-shadow: 0 1px 2px rgba(0,0,0,0.1);}
+    .g-bar:hover { filter: brightness(0.9); transform: translateY(-1px); }
+    .g-bar.st-todo { background: var(--st-todo); }
+    .g-bar.st-doing { background: var(--st-doing); }
+    .g-bar.st-review { background: var(--st-review); }
+    .g-bar.st-done { background: var(--st-done); }
+    .g-bar.st-omit { background: var(--st-omit); }
+    
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="header-title">🎯 目標・課題ボード</div>
+    <div class="view-tabs" id="viewTabs">
+      <button class="active" data-view="tree">ツリー</button>
+      <button data-view="board">ボード</button>
+      <button data-view="gantt">ガント</button>
+    </div>
+    <div>
+      <button class="btn primary" id="addRootTaskBtn">＋ 新規課題</button>
+    </div>
+  </header>
+
+  <div id="app-body">
+    <div id="view-tree" class="view-container active" style="overflow-y:auto;">
+      <table class="tree-table">
+        <thead>
+          <tr>
+            <th style="width:50%;">件名</th>
+            <th style="width:100px;">状態</th>
+            <th style="width:100px;">開始日</th>
+            <th style="width:100px;">期限日</th>
+            <th>TODO連携</th>
+          </tr>
+        </thead>
+        <tbody id="treeBody"></tbody>
+      </table>
+    </div>
+
+    <div id="view-board" class="view-container">
+      <div class="board-wrap" id="boardWrap">
+        </div>
+    </div>
+
+    <div id="view-gantt" class="view-container">
+      <div class="gantt-ctrl">
+        <button class="btn" id="ganttPrev">◀ 1ヶ月前</button>
+        <strong id="ganttMonthLabel">2026年4月</strong>
+        <button class="btn" id="ganttNext">1ヶ月後 ▶</button>
+        <button class="btn" id="ganttToday" style="margin-left:auto;">今日へ</button>
+      </div>
+      <div class="gantt-body">
+        <div class="gantt-left">
+          <div class="g-row g-row-head">課題名</div>
+          <div id="ganttTitles"></div>
+        </div>
+        <div class="gantt-right" id="ganttScrollArea">
+          <div class="gantt-grid" id="ganttGrid"></div>
+          <div class="gantt-bars" id="ganttBars"></div>
+        </div>
+      </div>
+    </div>
+
+    <aside id="detail-panel">
+      <div class="dp-header">
+        <span id="dpKey">詳細</span>
+        <button class="dp-close" id="dpClose">×</button>
+      </div>
+      <div class="dp-body">
+        <div class="form-group">
+          <label>タイトル</label>
+          <input type="text" id="dpTitle" placeholder="課題名">
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>ステータス</label>
+            <select id="dpStatus">
+              <option value="todo">未着手</option>
+              <option value="doing">対応中</option>
+              <option value="review">確認中</option>
+              <option value="done">完了</option>
+              <option value="omit">オミット</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>開始日</label>
+            <input type="date" id="dpStart">
+          </div>
+          <div class="form-group">
+            <label>期限日</label>
+            <input type="date" id="dpDue">
+          </div>
+        </div>
+        <div class="todo-sync-wrap">
+          <label><input type="checkbox" id="dpSyncTodo"> 📅 今日のTODOリストに表示する</label>
+        </div>
+        <div class="form-group">
+          <label>詳細・説明</label>
+          <textarea id="dpDesc" placeholder="課題の詳細や目的などを記入..."></textarea>
+        </div>
+        
+        <div class="comments-area">
+          <div class="form-group">
+            <label>📝 進捗メモ・コメント</label>
+            <div class="comment-input-wrap">
+              <textarea id="dpNewComment" placeholder="進捗や備忘録を残す..." style="min-height:50px;"></textarea>
+              <button class="btn" id="dpAddComment" style="align-self:flex-end;">追加</button>
+            </div>
+          </div>
+          <div id="dpCommentsList"></div>
+        </div>
+
+        <div style="margin-top:auto; padding-top:16px; border-top:1px solid var(--line); text-align:right;">
+          <button class="btn" id="dpDelete" style="color:var(--danger); border-color:var(--danger);">この課題を削除</button>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <script src="goals.js"></script>
+</body>
+</html>

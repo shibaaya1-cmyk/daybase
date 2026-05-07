@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Dフレーム｜マインドマップ</title>
+<style>
+  /* ───────── マインドマップ モダンUI ───────── */
+  :root {
+    --bg: #f8fafc; 
+    --panel: #ffffff; 
+    --line: #e2e8f0; 
+    --text: #334155; 
+    --muted: #64748b; 
+    --accent: #3b82f6;
+    --node-border: #cbd5e1;
+  }
+  * { box-sizing: border-box; }
+  html, body { 
+    height: 100%; margin: 0; background: var(--bg); color: var(--text); 
+    font-family: system-ui, -apple-system, sans-serif; font-size: 13px; line-height: 1.5; 
+  }
+  #app { display: grid; grid-template-rows: auto 1fr; height: 100%; }
+  
+  /* ========== ツールバー ========== */
+  .toolbar { 
+    display: flex; gap: 10px; align-items: center; padding: 10px 12px; 
+    background: var(--panel); border-bottom: 1px solid var(--line); 
+    position: sticky; top: 0; z-index: 10; flex-wrap: wrap;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+  }
+  .toolbar .group { 
+    display: flex; gap: 6px; align-items: center; 
+    padding-right: 12px; border-right: 1px solid var(--line); 
+  }
+  .toolbar .group:last-child { border-right: none; }
+
+  /* ボタン・入力欄のモダン化 */
+  button, select, input[type="text"] {
+    appearance: none; height: 30px; padding: 0 12px; 
+    border: 1px solid #cbd5e1; border-radius: 6px; 
+    font-size: 12px; font-weight: 600; color: #475569; 
+    background: #f1f5f9; cursor: pointer; transition: 0.2s; white-space: nowrap;
+  }
+  button:hover:not(:disabled) { background: #e2e8f0; }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  
+  button.primary { 
+    background: var(--accent); color: #fff; border: none; 
+    box-shadow: 0 2px 4px rgba(59,130,246,0.15); 
+  }
+  button.primary:hover:not(:disabled) { background: #2563eb; }
+  
+  input[type="text"], select {
+    background: #ffffff; cursor: text; font-weight: 500; color: #334155;
+  }
+  input[type="text"]:focus, select:focus {
+    border-color: var(--accent); outline: none; box-shadow: 0 0 0 2px rgba(59,130,246,0.1);
+  }
+
+  /* ========== ステージ（キャンバス） ========== */
+  /* 背景をFigmaのような上品なドットグリッドに */
+  #stageWrap { 
+    position: relative; overflow: hidden; 
+    background-color: var(--bg);
+    background-image: radial-gradient(circle, #cbd5e1 1px, transparent 1px);
+    background-size: 20px 20px;
+    border-top: 1px solid #fff;
+  }
+  #stage { position: absolute; inset: 0; }
+  svg { width: 100%; height: 100%; }
+  
+  /* 矢印（エッジ） */
+  .edge { stroke: #94a3b8; stroke-width: 2; fill: none; transition: stroke 0.2s, stroke-width 0.2s; }
+  .edge.selected { stroke: var(--accent); stroke-width: 3; filter: drop-shadow(0 0 2px rgba(59,130,246,0.4)); }
+  #edges path { pointer-events: stroke; cursor: pointer; }
+  
+  /* ノード（箱） */
+  .node rect { 
+    stroke: var(--node-border); stroke-width: 1.5; 
+    rx: 8px; ry: 8px; /* 丸みを少しシャープに */
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.05)); 
+    transition: stroke 0.2s, stroke-width 0.2s, filter 0.2s;
+  }
+  .node foreignObject { overflow: visible; }
+  .label { 
+    display: flex; align-items: center; justify-content: center; text-align: center;
+    padding: 8px 10px; min-width: 80px; max-width: 320px; 
+    border-radius: 8px; outline: 0; word-break: break-word; 
+    background: transparent !important; white-space: pre-wrap;
+    font-size: 13px; color: var(--text); font-weight: 600; line-height: 1.4;
+  }
+  .label[contenteditable="true"] { cursor: text; }
+  
+  /* ノード選択時（青枠と光彩） */
+  .node.selected rect { 
+    stroke: var(--accent); stroke-width: 2.5; 
+    filter: drop-shadow(0 4px 10px rgba(59,130,246,0.15)); 
+  }
+  
+  /* 矩形選択ツール */
+  .selection-rect { 
+    position: absolute; border: 1px dashed var(--accent); 
+    background: rgba(59,130,246,0.08); pointer-events: none; z-index: 5; border-radius: 4px; 
+  }
+  
+  /* ========== ミニマップ ========== */
+  .minimap { 
+    position: absolute; right: 16px; bottom: 16px; 
+    width: 180px; height: 120px; 
+    background: rgba(255,255,255,0.85); backdrop-filter: blur(4px); /* すりガラス効果 */
+    border: 1px solid var(--line); border-radius: 10px; overflow: hidden; 
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08); 
+  }
+  
+  /* ========== カラーパレット ========== */
+  .swatch { 
+    width: 22px; height: 22px; border-radius: 50%; /* 丸くする */
+    border: 1px solid #cbd5e1; cursor: pointer; 
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05); transition: 0.2s; 
+  }
+  .swatch:hover { transform: scale(1.15); }
+  .swatch:focus { outline: 2px solid var(--accent); outline-offset: 2px; }
+  
+  /* ========== ヘルプパネル ========== */
+  #infoPanel {
+    font-size: 13px; color: var(--text);
+  }
+  #infoPanel b { color: #1e293b; font-size: 14px; }
+  #infoPanel ul { padding-left: 20px; }
+  #infoPanel ul li { margin-bottom: 6px; color: #475569; }
+</style>
+</head>
+<link rel="stylesheet" href="../css/common-scroll.css">
+<body>
+<div id="app">
+  <div class="toolbar">
+    <div class="group">
+      <button id="newBtn" title="新規">新規</button>
+      <input id="mapName" type="text" placeholder="マップ名" list="saveNames" style="width:160px" />
+      <datalist id="saveNames"></datalist>
+      <button id="saveBtn" class="primary" title="保存">保存</button>
+      <select id="loadSelect" title="保存済みを読み込み" style="width:180px"><option value="">保存済みを選択…</option></select>
+      <button id="loadBtn" title="読込">読込</button>
+      <button id="delBtn" title="削除">削除</button>
+      <span id="autosaveBadge" style="font-size:12px;color:var(--muted)">ローカル保存</span>
+    </div>
+
+    <div class="group" id="nodeOps">
+      <button id="addRoot" title="ルートノードを追加">＋ルート</button>
+      <button id="addChild" title="子ノードを追加">＋子</button>
+      <button id="addSibling" title="兄弟ノードを追加">＋兄弟</button>
+      <button id="delNode" title="選択ノードを削除">－削除</button>
+      <button id="alignBtn" title="選択ノード配下を整列">整列</button>
+      <button id="connectBtn" title="接続モードON/OFF">接続モード</button>
+      <button id="delEdge" title="選択した矢印を削除">矢印削除</button>
+      <button id="routeModeBtn" title="配線モード（Rで切替）">直交: OFF</button>
+    </div>
+
+    <div class="group" id="colorGroup" title="色を選択（選択中のノードに適用）">
+      <div class="swatch" data-color="#ffffff" style="background:#ffffff" tabindex="0"></div>
+      <div class="swatch" data-color="#fef3c7" style="background:#fef3c7" tabindex="0"></div>
+      <div class="swatch" data-color="#e0f2fe" style="background:#e0f2fe" tabindex="0"></div>
+      <div class="swatch" data-color="#e9d5ff" style="background:#e9d5ff" tabindex="0"></div>
+      <div class="swatch" data-color="#dcfce7" style="background:#dcfce7" tabindex="0"></div>
+      <div class="swatch" data-color="#fde2e2" style="background:#fde2e2" tabindex="0"></div>
+    </div>
+
+    <div class="group">
+      <button id="zoomOut" title="ズームアウト">－</button>
+      <button id="zoomReset" title="ズーム率">100%</button>
+      <button id="zoomIn" title="ズームイン">＋</button>
+      <button id="fitBtn" title="すべてを表示">全体表示</button>
+      <button id="centerBtn" title="中心へ">中心</button>
+    </div>
+
+    <div class="group">
+      <button id="exportBtn" title="PNGで書き出す">PNG書き出し</button>
+      <button id="exportSvgBtn" title="SVGで書き出す">SVG書き出し</button>
+      <button id="exportJsonBtn" title="JSONで書き出す">JSON書き出し</button>
+      <button id="importBtn" title="JSON / SVG を読み込む">インポート</button>
+      <input id="importFile" type="file" accept=".json,.svg,image/svg+xml" style="display:none" />
+    </div>
+
+    <div class="group" style="margin-left:auto; position:relative">
+      <button id="infoBtn" title="使い方・ヘルプ">？</button>
+      <div id="infoPanel" style="display:none; position:absolute; right:0; top:38px; width:420px; max-width:min(90vw,480px); background:#fff; border:1px solid var(--line); border-radius:10px; box-shadow:0 8px 28px rgba(0,0,0,.1); padding:12px; z-index:20; font-size:12px; line-height:1.5">
+        <b>使い方（ショートカット）</b>
+        <ul style="margin:8px 0 0 18px; padding:0">
+          <li>ドラッグ：ノード移動／Shift+ドラッグ：範囲選択／Ctrl(⌘)+クリック：複数選択</li>
+          <li>F2 / E：編集開始／Esc：編集キャンセル</li>
+          <li>Enter（編集中）：確定して選択へ／Ctrl+Enter：改行</li>
+          <li>Enter（選択中）：兄弟を追加／Tab（選択中）：子を追加</li>
+          <li>← 親へ／→ 最初の子へ／↑↓ 兄弟間移動</li>
+          <li>Ctrl(⌘)+Z：元に戻す／Ctrl(⌘)+Y または Shift+Z：やり直し</li>
+          <li>接続モード：ノードを2つ順にクリックで矢印を作成</li>
+          <li>接続（ショートカット）：<b>L</b>（2ノード選択時）／<b>Alt+ドラッグ</b>（ノード→ノード）</li>
+          <li>整列：選択ノード配下を自動整列（縦均等／横左揃え／順序維持・再帰）</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div id="stageWrap">
+    <div id="stage">
+      <svg id="svgRoot" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="#94a3b8"></path>
+          </marker>
+        </defs>
+        <g id="viewport" transform="translate(0,0) scale(1)">
+          <g id="edges"></g>
+          <g id="nodes"></g>
+          <g id="overlay"></g>
+        </g>
+      </svg>
+      <div id="selRect" class="selection-rect" style="display:none"></div>
+      <canvas id="exportCanvas" style="display:none"></canvas>
+    </div>
+    <div class="minimap" id="mini"></div>
+  </div>
+</div>
+
+<!-- 外部JSのみを読み込む -->
+<script src="mindmap.js"></script>
+</body>
+</html>
