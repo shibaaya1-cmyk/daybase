@@ -226,8 +226,12 @@ function hasDataOnDate(dateStr, todos, schedules, journals, goalsData, filters) 
     if (hasTodo) return true;
   }
   if (filters.goals && goalsData && Array.isArray(goalsData.issues)) {
-    // ★ 修正：期限日の代用（dueDate）を削除し、純粋に doneAt だけを判定するようにしました
-    const hasGoal = goalsData.issues.some(iss => iss.status === 'done' && iss.doneAt === dateStr);
+    // ★ 修正：完了日（doneAt）を優先しつつ、無ければ期限日（dueDate）で代用（過去データ救済）
+    const hasGoal = goalsData.issues.some(iss => {
+      if (iss.status !== 'done') return false;
+      const dAt = iss.doneAt || iss.dueDate;
+      return dAt === dateStr;
+    });
     if (hasGoal) return true;
   }
   return false;
@@ -358,8 +362,8 @@ function renderDayContent() {
 
   if (showGoals) {
     const issues = goalsData.issues || [];
-    // ★ 修正：期限日の代用（dueDate）を削除
-    const completedGoals = issues.filter(iss => iss.status === 'done' && iss.doneAt === selectedDateStr);
+    // ★ 修正：完了日（doneAt）を優先しつつ、無ければ期限日（dueDate）で表示（救済措置）
+    const completedGoals = issues.filter(iss => iss.status === 'done' && (iss.doneAt === selectedDateStr || (!iss.doneAt && iss.dueDate === selectedDateStr)));
     
     const goalsWrap = document.getElementById('goals-list');
     if (completedGoals.length === 0) {
@@ -512,8 +516,8 @@ function generateReport() {
     }
 
     if (reportFilters.goals && goalsData && Array.isArray(goalsData.issues)) {
-      // ★ 修正：期限日の代用（dueDate）を削除
-      const completedGoals = goalsData.issues.filter(iss => iss.status === 'done' && iss.doneAt === dateStr);
+      // ★ 修正：完了日（doneAt）を優先しつつ、無ければ期限日（dueDate）で表示（救済措置）
+      const completedGoals = goalsData.issues.filter(iss => iss.status === 'done' && (iss.doneAt === dateStr || (!iss.doneAt && iss.dueDate === dateStr)));
       if (completedGoals.length > 0) {
         dayHtml += `<div class="report-section"><h5>🎯 完了した目標・課題</h5>`;
         completedGoals.forEach(iss => {

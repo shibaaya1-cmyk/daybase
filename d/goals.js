@@ -66,8 +66,11 @@
     if(!dStr) return '-';
     const [y,m,d] = dStr.split('-'); return `${m}/${d}`;
   }
+  
+  // ★ ここが前回破損していた部分です（修正済み）
   function todayYMD() {
-    const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    const d = new Date(); 
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
   }
 
   function updateParent(parentId) {
@@ -106,7 +109,7 @@
       } else if (!hasTodo && !hasDoing && !hasReview) {
         if (parent.status !== 'done') {
            parent.status = 'done';
-           parent.doneAt = todayYMD(); // ★ 完了日を自動記録
+           parent.doneAt = todayYMD(); 
         }
       } else if (hasDoing || hasReview || hasDone) {
         parent.status = 'doing';
@@ -144,7 +147,7 @@
     const newIss = {
       id: uid(), parentId: parentId, title: title.trim(), description: '',
       status: 'todo', startDate: '', dueDate: '', syncTodo: false, comments: [], isOpen: true,
-      doneAt: null // ★ 初期値として完了日を空でセット
+      doneAt: null 
     };
     state.issues.push(newIss);
     saveData(); render();
@@ -256,7 +259,6 @@
         const iss = getIssue(id);
         if(iss && iss.status !== k) {
           iss.status = k;
-          // ★ ドラッグ＆ドロップでステータスが変わった時の完了日記録
           if (k === 'done') iss.doneAt = todayYMD();
           else iss.doneAt = null;
 
@@ -277,8 +279,8 @@
         card.ondragend = () => card.classList.remove('dragging');
         card.onclick = () => openDetail(iss.id);
         
-        let metaHtml = `<span>`;
-        if(iss.syncTodo) metaHtml += `📅 `;
+        let metaHtml = '<span>';
+        if(iss.syncTodo) metaHtml += '📅 ';
         metaHtml += `${formatDate(iss.startDate)} ~ ${formatDate(iss.dueDate)}</span>`;
         if(iss.comments.length > 0) metaHtml += `<span>💬 ${iss.comments.length}</span>`;
 
@@ -411,7 +413,6 @@
     if(!iss) return;
     iss.title = els.dpTitle.value.trim() || '無題';
 
-    // ★ ステータスの変更を検知して完了日を記録・リセット
     const newStatus = els.dpStatus.value;
     if (iss.status !== newStatus) {
       if (newStatus === 'done') iss.doneAt = todayYMD();
@@ -481,7 +482,6 @@
     }, 50);
   };
 
-  // 外部からのデータ更新を検知
   window.addEventListener('storage', e => {
     if (e.key === LS_KEY) {
       state = loadData() || { issues: [] };
