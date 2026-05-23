@@ -200,6 +200,12 @@ function toYMD(d) {
   return `${y}-${m}-${day}`;
 }
 
+// ★ 追加：文字化けした日付データを強制的に修復する関数
+function getSafeDate(dStr) {
+  if (!dStr || typeof dStr !== 'string') return null;
+  return dStr.substring(0, 10); // "2026-05-2401" などを "2026-05-24" に直す
+}
+
 function escapeHtml(str) {
   if (!str) return '';
   return String(str).replace(/[&<>"']/g, m => ({
@@ -226,10 +232,12 @@ function hasDataOnDate(dateStr, todos, schedules, journals, goalsData, filters) 
     if (hasTodo) return true;
   }
   if (filters.goals && goalsData && Array.isArray(goalsData.issues)) {
-    // ★ 修正：完了日（doneAt）を優先しつつ、無ければ期限日（dueDate）で代用（過去データ救済）
     const hasGoal = goalsData.issues.some(iss => {
       if (iss.status !== 'done') return false;
-      const dAt = iss.doneAt || iss.dueDate;
+      // ★ 修復関数を通してから比較する
+      const safeDoneAt = getSafeDate(iss.doneAt);
+      const safeDueDate = getSafeDate(iss.dueDate);
+      const dAt = safeDoneAt || safeDueDate;
       return dAt === dateStr;
     });
     if (hasGoal) return true;
@@ -362,8 +370,13 @@ function renderDayContent() {
 
   if (showGoals) {
     const issues = goalsData.issues || [];
-    // ★ 修正：完了日（doneAt）を優先しつつ、無ければ期限日（dueDate）で表示（救済措置）
-    const completedGoals = issues.filter(iss => iss.status === 'done' && (iss.doneAt === selectedDateStr || (!iss.doneAt && iss.dueDate === selectedDateStr)));
+    // ★ 修復関数を通してから比較する
+    const completedGoals = issues.filter(iss => {
+      if (iss.status !== 'done') return false;
+      const safeDoneAt = getSafeDate(iss.doneAt);
+      const safeDueDate = getSafeDate(iss.dueDate);
+      return safeDoneAt === selectedDateStr || (!safeDoneAt && safeDueDate === selectedDateStr);
+    });
     
     const goalsWrap = document.getElementById('goals-list');
     if (completedGoals.length === 0) {
@@ -516,8 +529,14 @@ function generateReport() {
     }
 
     if (reportFilters.goals && goalsData && Array.isArray(goalsData.issues)) {
-      // ★ 修正：完了日（doneAt）を優先しつつ、無ければ期限日（dueDate）で表示（救済措置）
-      const completedGoals = goalsData.issues.filter(iss => iss.status === 'done' && (iss.doneAt === dateStr || (!iss.doneAt && iss.dueDate === dateStr)));
+      // ★ 修復関数を通してから比較する
+      const completedGoals = goalsData.issues.filter(iss => {
+        if (iss.status !== 'done') return false;
+        const safeDoneAt = getSafeDate(iss.doneAt);
+        const safeDueDate = getSafeDate(iss.dueDate);
+        return safeDoneAt === dateStr || (!safeDoneAt && safeDueDate === dateStr);
+      });
+      
       if (completedGoals.length > 0) {
         dayHtml += `<div class="report-section"><h5>🎯 完了した目標・課題</h5>`;
         completedGoals.forEach(iss => {
