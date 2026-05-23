@@ -74,7 +74,7 @@
     return false;
   }
 
-  // フォルダの移動
+  // フォルダの移動（親の変更）
   function moveFolder(folderId, targetParentId) {
     if (folderId === targetParentId) return; // 同じ場所
     if (targetParentId !== null && isDescendant(folderId, targetParentId)) {
@@ -86,6 +86,31 @@
       folder.parentId = targetParentId;
       saveData(); render();
     }
+  }
+
+  // ★ フォルダの並べ替え（追加ロジック）
+  function reorderFolder(dragId, targetId, position) {
+    if (dragId === targetId) return;
+    const targetFolder = state.folders.find(f => f.id === targetId);
+    if (!targetFolder) return;
+
+    if (targetFolder.parentId !== null && isDescendant(dragId, targetFolder.parentId)) {
+      alert('親フォルダを自分の子フォルダの中に移動することはできません。');
+      return;
+    }
+
+    const dragIndex = state.folders.findIndex(f => f.id === dragId);
+    if (dragIndex === -1) return;
+    
+    const dragFolder = state.folders[dragIndex];
+    dragFolder.parentId = targetFolder.parentId; // ドロップ先と同じ階層にする
+
+    state.folders.splice(dragIndex, 1); // 元の位置から削除
+
+    let newTargetIndex = state.folders.findIndex(f => f.id === targetId);
+    if (position === 'after') newTargetIndex++;
+
+    state.folders.splice(newTargetIndex, 0, dragFolder); // 新しい位置に挿入
   }
 
   // ─────────────────────────────
@@ -118,19 +143,51 @@
         };
         div.ondragend = () => { div.classList.remove('dragging'); };
 
-        div.ondragover = (e) => { e.preventDefault(); e.stopPropagation(); div.classList.add('drag-over'); };
-        div.ondragleave = (e) => { e.stopPropagation(); div.classList.remove('drag-over'); };
+        // ★ ドラッグオーバー時の処理（上・中・下の判定を追加）
+        div.ondragover = (e) => { 
+          e.preventDefault(); 
+          e.stopPropagation(); 
+          div.classList.remove('drag-over', 'drag-over-top', 'drag-over-bottom');
+          
+          const rect = div.getBoundingClientRect();
+          const y = e.clientY;
+          
+          if (y < rect.top + rect.height * 0.25) {
+            div.classList.add('drag-over-top'); // 上25%なら前に挿入
+          } else if (y > rect.bottom - rect.height * 0.25) {
+            div.classList.add('drag-over-bottom'); // 下25%なら後ろに挿入
+          } else {
+            div.classList.add('drag-over'); // 真ん中なら子フォルダにする
+          }
+        };
+        
+        div.ondragleave = (e) => { 
+          e.stopPropagation(); 
+          div.classList.remove('drag-over', 'drag-over-top', 'drag-over-bottom'); 
+        };
+        
+        // ★ ドロップ時の処理
         div.ondrop = (e) => {
           e.preventDefault();
           e.stopPropagation();
-          div.classList.remove('drag-over');
+          
+          const isTop = div.classList.contains('drag-over-top');
+          const isBottom = div.classList.contains('drag-over-bottom');
+          const isChild = div.classList.contains('drag-over');
+          
+          div.classList.remove('drag-over', 'drag-over-top', 'drag-over-bottom');
           
           const data = e.dataTransfer.getData('text/plain');
           if (data.startsWith('memo:')) {
             moveMemoToFolder(data.replace('memo:', ''), f.id);
           } else if (data.startsWith('folder:')) {
-            moveFolder(data.replace('folder:', ''), f.id);
-            f.isOpen = true;
+            const dragId = data.replace('folder:', '');
+            if (isChild) {
+              moveFolder(dragId, f.id); // 子フォルダに入れる
+              f.isOpen = true;
+            } else {
+              reorderFolder(dragId, f.id, isBottom ? 'after' : 'before'); // 順番を入れ替える
+            }
             saveData(); render();
           }
         };
@@ -238,7 +295,6 @@
       const tab = document.createElement('div');
       tab.className = 'tab' + (mid === state.activeMemoId ? ' active' : '');
       
-      // ─── ★ メモのドラッグ（並べ替え・移動両対応） ───
       tab.draggable = true;
       tab.ondragstart = (e) => {
         e.dataTransfer.setData('text/plain', 'memo:' + mid);
@@ -248,19 +304,16 @@
       
       tab.ondragend = () => {
         tab.classList.remove('dragging');
-        // 他のタブに残ったガイドラインをすべて消去
         el.tabBar.querySelectorAll('.tab').forEach(t => t.classList.remove('drag-over-left', 'drag-over-right'));
       };
 
-      // ★ 他のタブが重なってきたときの処理（並べ替えのガイドライン表示）
       tab.ondragover = (e) => {
         const types = e.dataTransfer.types || [];
-        if (!types.includes('text/plain')) return; // ファイルなどは無視
+        if (!types.includes('text/plain')) return;
         
         e.preventDefault();
         e.dataTransfer.dropEffect = 'move';
 
-        // マウスがタブの左半分にあるか右半分にあるかでガイドラインを切り替え
         const rect = tab.getBoundingClientRect();
         const midX = rect.left + rect.width / 2;
         if (e.clientX < midX) {
@@ -276,36 +329,31 @@
         tab.classList.remove('drag-over-left', 'drag-over-right');
       };
 
-      // ★ ドロップされた時の並べ替え処理
       tab.ondrop = (e) => {
         e.preventDefault();
-        e.stopPropagation(); // サイドバーなどのドロップ発火を防ぐ
+        e.stopPropagation();
         tab.classList.remove('drag-over-left', 'drag-over-right');
         
         const data = e.dataTransfer.getData('text/plain');
         if (data.startsWith('memo:')) {
           const dragId = data.replace('memo:', '');
-          if (dragId === mid) return; // 自分自身には落とせない
+          if (dragId === mid) return;
 
-          // 同じフォルダ内での順番入れ替え
           if (folder.memos.includes(dragId)) {
-            // まず元の位置から削除
             const oldIdx = folder.memos.indexOf(dragId);
             folder.memos.splice(oldIdx, 1);
 
-            // 挿入先のインデックスを再計算
             let newIdx = folder.memos.indexOf(mid);
             const rect = tab.getBoundingClientRect();
             const midX = rect.left + rect.width / 2;
             
-            // 右半分に落としたら、その後ろに挿入
             if (e.clientX >= midX) {
               newIdx += 1;
             }
 
             folder.memos.splice(newIdx, 0, dragId);
             saveData(); 
-            renderTabs(); // タブだけ再描画してスムーズに反映
+            renderTabs();
           }
         }
       };

@@ -1,6 +1,6 @@
 /* ================== Eフレーム：TODO（サブありはサブのみ／サブなしは親のまま） ================== */
   const TODO_KEY = 'todosV1';
-  const BACKLOG_KEY = 'D_BACKLOG_V1'; // ★ 追加
+  const BACKLOG_KEY = 'D_BACKLOG_V1';
 
 // ---- サブタスクの状態から親タスクの done / doneAt を一括で整える ----
 function recalcAllParentDoneFromSubs(todos){
@@ -8,36 +8,30 @@ function recalcAllParentDoneFromSubs(todos){
 
   const todayStr = (typeof ymdLocal === 'function')
     ? ymdLocal(new Date())
-    : new Date().toISOString().slice(0,10); // フォールバック
+    : new Date().toISOString().slice(0,10); 
 
   todos.forEach(task => {
     if (!task || !Array.isArray(task.subtasks) || task.subtasks.length === 0) {
-      // サブタスクが1つもないタスクはそのまま触らない
       return;
     }
 
     const subs = task.subtasks;
-
-    // id -> サブタスク本体
     const byId = new Map();
     subs.forEach(s => {
       if (!s || !s.id) return;
       byId.set(String(s.id), s);
     });
 
-    // parentKey(''=親タスク) -> その直下の子サブタスク配列
     const childrenMap = new Map();
     subs.forEach(s => {
       if (!s) return;
       let pid = (typeof s.parentSubId === 'string') ? s.parentSubId : '';
-      // 親IDが存在しない / 不正なら、親タスク直下扱いにする
       if (pid && !byId.has(pid)) pid = '';
       const key = String(pid);
       if (!childrenMap.has(key)) childrenMap.set(key, []);
       childrenMap.get(key).push(s);
     });
 
-    // key: ''（親タスク） or サブタスクID -> 「そのノードが完了かどうか」
     const effectiveDone = new Map();
 
     function computeDone(key){
@@ -128,17 +122,13 @@ function saveTodos(list){
   try {
     const payload = exportTodosForCalendar(next); 
     window.parent.postMessage({ type: 'D_TODO_SYNC', todos: payload }, '*');
-  } catch (e) {
-    console.warn('D_TODO_SYNC postMessage failed:', e);
-  }
+  } catch (e) {}
 }
 
 function updateParentDoneFromSubs(task){
   if (!task || !Array.isArray(task.subtasks)) return;
-
   const subs = task.subtasks;
   if (!subs.length) return;
-
   const allDone = subs.every(s => s && s.done === true);
 
   if (allDone){
@@ -156,10 +146,8 @@ function updateParentDoneFromSubs(task){
   }
 }
 
-
 function exportTodosForCalendar(list){
   const out = [];
-
   const isYmd = s => /^\d{4}-\d{2}-\d{2}$/.test(String(s||''));
   const toEndOfDay = ymd => `${ymd}T23:59`;
   const toStartOfDay = ymd => `${ymd}T00:00`; 
@@ -405,8 +393,6 @@ function buildLeafSubItemsForDate(dateStr){
   const all = loadTodos();
   const out = [];
 
-  const started = (s)=> !s || s <= dateStr;
-
   for (const t of all){
     const subs = Array.isArray(t.subtasks) ? t.subtasks : [];
     if (!subs.length) continue;
@@ -478,7 +464,6 @@ function buildLeafSubItemsForDate(dateStr){
 
 function renderTodoListFor(dateStr){
   const wrap = document.getElementById('todoList');
-
   const prevScrollTop = wrap.scrollTop;
   if (!wrap) return;
 
@@ -486,7 +471,6 @@ function renderTodoListFor(dateStr){
   const rows = [];
   const started = (s)=> !s || s <= dateStr;
 
-  // ========== ① サブタスクを持たない親タスク（単独TODO） ==========
   for (const t of all){
     const subs = Array.isArray(t.subtasks) ? t.subtasks : [];
     const hasSubs = subs.length > 0;
@@ -514,7 +498,6 @@ function renderTodoListFor(dateStr){
     }
   }
 
-  // ========== ② サブタスクありのタスク → 葉サブだけ列挙 ==========
   for (const t of all){
     const subs = Array.isArray(t.subtasks) ? t.subtasks : [];
     if (!subs.length) continue;
@@ -582,7 +565,6 @@ function renderTodoListFor(dateStr){
     }
   }
 
-  // ========== ②.5 目標・課題（D_BACKLOG_V1）からの連携 ==========
   try {
     const backlogData = JSON.parse(localStorage.getItem(BACKLOG_KEY) || '{"issues":[]}');
     const syncIssues = backlogData.issues.filter(i => i.syncTodo);
@@ -601,7 +583,6 @@ function renderTodoListFor(dateStr){
       } else {
         const done = (issue.status === 'done' || issue.status === 'omit');
         const st = issue.startDate || '';
-        // 完了していない、かつ開始日が今日以前（未来ではない）
         const isShown = done ? false : (!st || st <= dateStr);
         
         if (isShown) {
@@ -628,7 +609,6 @@ function renderTodoListFor(dateStr){
   } catch(e) {}
 
 
-  // ========== ③ 並べ替え：未完→完了、〆切→開始→タイトル ==========
   rows.sort((a,b)=>{
     if (a.done !== b.done) return a.done ? 1 : -1;
     const ad = a.dueDate || '9999-12-31';
@@ -640,12 +620,11 @@ function renderTodoListFor(dateStr){
     return (a.title||'').localeCompare(b.title||'');
   });
 
-    // ==== ここで最終的に「親_子_孫… / 末端タスク名」を強制的に再計算して上書きする ====
   (function fixSubTitlesFromRealData(){
     const all = loadTodos();
 
     rows.forEach(r => {
-      if (r.type !== 'sub' || r._isBacklog) return;   // 親タスク行やBacklog由来はそのまま
+      if (r.type !== 'sub' || r._isBacklog) return;
 
       const task = all.find(t => t.id === r.parentId);
       if (!task || !Array.isArray(task.subtasks)) return;
@@ -684,7 +663,6 @@ function renderTodoListFor(dateStr){
       r.title       = leafTitleSafe;
     });
   })();
-
 
       if (!rows.length){
         wrap.innerHTML = `<div style="color:#666;font-size:12px;padding:8px;">この日に対応するTODOはありません</div>`;
@@ -774,8 +752,9 @@ function renderTodoListFor(dateStr){
             
             if (issue) {
               issue.status = checked ? 'done' : 'todo';
+              // ★ 追加：チェックされたとき、完了日（doneAt）を記録する
+              issue.doneAt = checked ? viewDate : null;
               
-              // ローカル用のステータス・日付再計算関数
               function updateBacklogParentsLocal(issues, parentId) {
                 if (!parentId) return;
                 const parent = issues.find(i => i.id === parentId);
@@ -796,10 +775,24 @@ function renderTodoListFor(dateStr){
                   const hasDone = children.some(c => c.status === 'done');
                   const hasTodo = children.some(c => c.status === 'todo');
                   const allOmit = children.every(c => c.status === 'omit');
-                  if (allOmit) { parent.status = 'omit'; }
-                  else if (!hasTodo && !hasDoing && !hasReview) { parent.status = 'done'; }
-                  else if (hasDoing || hasReview || hasDone) { parent.status = 'doing'; }
-                  else { parent.status = 'todo'; }
+                  if (allOmit) { 
+                    parent.status = 'omit'; 
+                    parent.doneAt = null; // ★ 追加
+                  }
+                  else if (!hasTodo && !hasDoing && !hasReview) { 
+                    if (parent.status !== 'done') {
+                      parent.status = 'done'; 
+                      parent.doneAt = viewDate; // ★ 追加
+                    }
+                  }
+                  else if (hasDoing || hasReview || hasDone) { 
+                    parent.status = 'doing'; 
+                    parent.doneAt = null; // ★ 追加
+                  }
+                  else { 
+                    parent.status = 'todo'; 
+                    parent.doneAt = null; // ★ 追加
+                  }
                 }
                 if (parent.parentId) updateBacklogParentsLocal(issues, parent.parentId);
               }
@@ -808,7 +801,6 @@ function renderTodoListFor(dateStr){
               localStorage.setItem(BACKLOG_KEY, JSON.stringify(backlogData));
               applyDoneStyles(row, checked);
               
-              // 少し待ってから再描画（すぐ消えると操作感が悪いので）
               setTimeout(()=>renderTodoListFor(viewDate), 300);
               try { window.parent.postMessage({ type:'todo:saved' }, '*'); } catch(e){}
             }
@@ -823,7 +815,6 @@ function renderTodoListFor(dateStr){
           const parent = all.find(x => x.id === pid);
           if (!parent) return;
 
-          // ==== サブタスク行のチェック処理 ====
           if (isSub && sid){
             if (typeof hasChildSubtasks === 'function' && hasChildSubtasks(parent, sid)) {
               const orig = !!((parent.subtasks || []).find(ss => ss.id === sid)?.done);
@@ -857,7 +848,6 @@ function renderTodoListFor(dateStr){
             return;
           }
 
-          // ==== 親タスク行 ====
           const hasSubs = Array.isArray(parent.subtasks) && parent.subtasks.length > 0;
           if (hasSubs){
             checkbox.checked = !!parent.done;
@@ -914,7 +904,6 @@ function renderTodoListFor(dateStr){
           return;
         }
 
-        // 本文クリック → モーダル編集（目標・課題はタブ移動）
         const isBacklog = row.dataset.isBacklog === 'true';
         if (isBacklog) {
            try { window.parent.postMessage({ type: 'D_SWITCH_TAB', tab: 'goals' }, '*'); } catch(e){}
@@ -994,7 +983,7 @@ const needsScroll = copyW > (vpW + 2);
 
 
 if (needsScroll) {
-first.insertAdjacentText('beforeend', ' ');
+first.insertAdjacentText('beforeend', ' ');
 if (copies.length === 1) {
 track.appendChild(first.cloneNode(true));
 copies = Array.from(track.querySelectorAll('.marquee-copy'));
@@ -1246,7 +1235,6 @@ function onTmDelete(){
     }
   });
 
-  // ★ Eフレーム側でも Backlog のデータ変更を監視して同期する
   window.addEventListener('storage', (e)=>{ 
     if (e.key === TODO_KEY || e.key === BACKLOG_KEY) {
       renderTodoListFor(dateInput.value); 
@@ -1289,15 +1277,13 @@ function escapeHtml(s){ return String(s).replace(/[&<>"']/g, m=>({'&':'&amp;','<
 
 
 
-// dframe.html を読み込む本体iframe（完全移行時は #dFrame を1本に）
+// dframe.html を読み込む本体iframe
 const d = document.getElementById('dFrame') || document.getElementById('pageFrame');
 
-// DにURLを開かせる（旧：pageFrame.src = "https://..." の置換先）
 function D_OPEN_URL(url){
   try { d.contentWindow.postMessage({ type:'D_OPEN_URL', url }, '*'); } catch {}
 }
 
-// Dのタブを切り替える
 function D_SWITCH_TAB(tab){
   try { d.contentWindow.postMessage({ type:'D_SWITCH_TAB', tab }, '*'); } catch {}
 }

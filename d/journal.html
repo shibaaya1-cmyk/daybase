@@ -15,145 +15,62 @@
     display: flex; gap: 16px; height: 100vh; box-sizing: border-box;
   }
   
-  /* 左カラム：カレンダー周り */
-  .left-pane {
-    width: 260px; display: flex; flex-direction: column; gap: 16px; flex-shrink: 0;
-  }
-  .card {
-    background: var(--card); border: 1px solid var(--border);
-    border-radius: 12px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-  }
+  .left-pane { width: 260px; display: flex; flex-direction: column; gap: 16px; flex-shrink: 0; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
 
-  /* ミニカレンダー ヘッダー＆コントロール */
-  .cal-controls {
-    display: flex; justify-content: space-between; align-items: center; 
-    margin-bottom: 12px; border-bottom: 1px solid var(--border); padding-bottom: 8px;
-  }
+  .cal-controls { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid var(--border); padding-bottom: 8px; }
   .cal-controls h3 { margin: 0; font-size: 14px; border: none; padding: 0; }
-  .cal-header { 
-    display: flex; justify-content: space-between; align-items: center; 
-    margin-bottom: 8px; font-weight: bold; font-size: 14px; 
-  }
+  .cal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-weight: bold; font-size: 14px; }
   
-  /* ボタン・セレクトボックス */
-  .cal-btn { 
-    cursor: pointer; background: #fff; border: 1px solid var(--border); 
-    border-radius: 4px; padding: 2px 8px; color: var(--text-main);
-    transition: 0.2s;
-  }
+  .cal-btn { cursor: pointer; background: #fff; border: 1px solid var(--border); border-radius: 4px; padding: 2px 8px; color: var(--text-main); transition: 0.2s; }
   .cal-btn:hover { background: #f1f5f9; border-color: #cbd5e1; }
   #btn-today { font-size: 11px; font-weight: bold; padding: 4px 8px; }
   
-  .cal-select {
-    border: 1px solid var(--border); border-radius: 4px; padding: 2px 4px;
-    font-size: 13px; font-weight: bold; cursor: pointer; background: #fff;
-    color: var(--text-main); outline: none; transition: 0.2s;
-  }
+  .cal-select { border: 1px solid var(--border); border-radius: 4px; padding: 2px 4px; font-size: 13px; font-weight: bold; cursor: pointer; background: #fff; color: var(--text-main); outline: none; transition: 0.2s; }
   .cal-select:hover, .cal-select:focus { border-color: var(--accent); }
 
-  /* ミニカレンダー グリッド */
   .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; text-align: center; font-size: 12px; }
   .cal-grid .day-name { font-weight: bold; color: var(--text-sub); margin-bottom: 4px; }
   .cal-cell { padding: 6px 0; border-radius: 4px; cursor: pointer; position: relative; }
   .cal-cell:hover { background: #f1f5f9; }
   .cal-cell.active { background: var(--accent); color: #fff; font-weight: bold; }
   
-  /* 「今日」の装飾 */
-  .cal-cell.is-today {
-    color: var(--accent); font-weight: bold;
-    box-shadow: inset 0 0 0 1.5px var(--accent);
-  }
-  .cal-cell.is-today.active {
-    background: var(--accent); color: #fff; box-shadow: none;
-  }
-
-  /* ドット（データあり） */
-  .cal-cell.has-data::after {
-    content: ''; position: absolute; bottom: 2px; left: 50%; transform: translateX(-50%);
-    width: 4px; height: 4px; border-radius: 50%; background: #ef4444; 
-  }
+  .cal-cell.is-today { color: var(--accent); font-weight: bold; box-shadow: inset 0 0 0 1.5px var(--accent); }
+  .cal-cell.is-today.active { background: var(--accent); color: #fff; box-shadow: none; }
+  .cal-cell.has-data::after { content: ''; position: absolute; bottom: 2px; left: 50%; transform: translateX(-50%); width: 4px; height: 4px; border-radius: 50%; background: #ef4444; }
   .cal-cell.active.has-data::after { background: #fff; }
 
-  /* 右カラム：コンテンツ周り */
-  .right-pane {
-    flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 16px;
-    overflow-y: auto; padding-right: 8px;
-  }
+  .right-pane { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 16px; overflow-y: auto; padding-right: 8px; }
   h3 { font-size: 14px; margin: 0 0 12px 0; border-bottom: 1px solid var(--border); padding-bottom: 8px; }
   
-  /* ジャーナル入力欄 */
-  textarea {
-    width: 100%; height: 120px; padding: 10px; border: 1px solid var(--border);
-    border-radius: 8px; resize: vertical; box-sizing: border-box; font-family: inherit;
-    font-size: 14px; transition: 0.2s;
-  }
+  textarea { width: 100%; height: 120px; padding: 10px; border: 1px solid var(--border); border-radius: 8px; resize: vertical; box-sizing: border-box; font-family: inherit; font-size: 14px; transition: 0.2s; }
   textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(59,130,246,0.1); }
-  .btn-save {
-    background: var(--accent); color: #fff; border: none; padding: 8px 16px;
-    border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.2s;
-  }
+  .btn-save { background: var(--accent); color: #fff; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.2s; }
   .btn-save:hover { background: #2563eb; }
 
-  /* リスト表示（TODO・スケジュール等） */
-  .list-item {
-    padding: 8px 12px; border-bottom: 1px dashed var(--border); font-size: 13px;
-    display: flex; gap: 8px; align-items: center;
-  }
+  .list-item { padding: 8px 12px; border-bottom: 1px dashed var(--border); font-size: 13px; display: flex; gap: 8px; align-items: center; }
   .list-item:last-child { border-bottom: none; }
   .empty-msg { color: var(--text-sub); font-size: 12px; padding: 8px; text-align: center; }
 
-  /* モーダル用CSS */
-  .modal-overlay {
-    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-    background: rgba(0,0,0,0.4); backdrop-filter: blur(2px);
-    display: none; justify-content: center; align-items: center; z-index: 5000;
-  }
-  .modal-content {
-    background: var(--card); width: 92%; max-width: 850px; height: 88vh;
-    border-radius: 12px; display: flex; flex-direction: column; overflow: hidden;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-    animation: fadeIn 0.2s ease-out;
-  }
-  @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-  .modal-header {
-    padding: 16px 20px; border-bottom: 1px solid var(--border);
-    display: flex; justify-content: space-between; align-items: center; background: #f8fafc;
-  }
+  .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); backdrop-filter: blur(2px); display: none; justify-content: center; align-items: center; z-index: 5000; }
+  .modal-content { background: var(--card); width: 92%; max-width: 850px; height: 88vh; border-radius: 12px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.2); animation: fadeIn 0.2s ease-out; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+  .modal-header { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: #f8fafc; }
   .modal-header h2 { margin: 0; font-size: 18px; display: flex; align-items: center; gap: 8px; }
-  .btn-close {
-    background: none; border: none; font-size: 28px; cursor: pointer; 
-    color: var(--text-sub); line-height: 1; padding: 0 8px; transition: 0.2s;
-  }
+  .btn-close { background: none; border: none; font-size: 28px; cursor: pointer; color: var(--text-sub); line-height: 1; padding: 0 8px; transition: 0.2s; }
   .btn-close:hover { color: #ef4444; }
   
-  .modal-filters {
-    padding: 12px 20px; border-bottom: 1px solid var(--border); 
-    display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap; background: #fff;
-  }
+  .modal-filters { padding: 12px 20px; border-bottom: 1px solid var(--border); display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap; background: #fff; }
   .modal-filters-group { display: flex; align-items: center; gap: 12px; }
-  .modal-filters input[type="date"] {
-    border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; font-family: inherit; font-size: 13px;
-  }
+  .modal-filters input[type="date"] { border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; font-family: inherit; font-size: 13px; }
   
   .modal-body { flex: 1; overflow-y: auto; padding: 20px; background: #f1f5f9; }
-  .report-day-card {
-    background: #fff; border: 1px solid var(--border); border-radius: 10px;
-    padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.02);
-  }
-  .report-day-card h4 {
-    margin: 0 0 16px 0; padding-bottom: 8px; border-bottom: 2px solid var(--accent); 
-    color: var(--accent); font-size: 16px; display: inline-block; min-width: 120px;
-  }
+  .report-day-card { background: #fff; border: 1px solid var(--border); border-radius: 10px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
+  .report-day-card h4 { margin: 0 0 16px 0; padding-bottom: 8px; border-bottom: 2px solid var(--accent); color: var(--accent); font-size: 16px; display: inline-block; min-width: 120px; }
   .report-section { margin-bottom: 16px; }
   .report-section:last-child { margin-bottom: 0; }
   .report-section h5 { margin: 0 0 8px 0; font-size: 13px; color: var(--text-sub); }
-  .report-text { 
-    font-size: 14px; white-space: pre-wrap; line-height: 1.6; 
-    color: var(--text-main); background: #f8fafc; padding: 12px; border-radius: 8px; 
-  }
+  .report-text { font-size: 14px; white-space: pre-wrap; line-height: 1.6; color: var(--text-main); background: #f8fafc; padding: 12px; border-radius: 8px; }
   .report-list-item { font-size: 13px; padding: 6px 0; border-bottom: 1px dashed #e2e8f0; display: flex; gap: 8px; }
   .report-list-item:last-child { border-bottom: none; }
 </style>
@@ -273,10 +190,9 @@ const KEYS = {
   GOALS: 'D_BACKLOG_V1' 
 };
 
-let currentDate = new Date(); // カレンダー表示用の年月
-let selectedDateStr = toYMD(new Date()); // 選択中の日付 (YYYY-MM-DD)
+let currentDate = new Date(); 
+let selectedDateStr = toYMD(new Date()); 
 
-// 日付フォーマット関数
 function toYMD(d) {
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, '0');
@@ -284,7 +200,6 @@ function toYMD(d) {
   return `${y}-${m}-${day}`;
 }
 
-// 記号などのエスケープ
 function escapeHtml(str) {
   if (!str) return '';
   return String(str).replace(/[&<>"']/g, m => ({
@@ -292,19 +207,14 @@ function escapeHtml(str) {
   }[m]));
 }
 
-// データ取得
 function getStorageData(key, fallback) {
   try { return JSON.parse(localStorage.getItem(key)) || fallback; } 
   catch(e) { return fallback; }
 }
 
-// データの有無判定
 function hasDataOnDate(dateStr, todos, schedules, journals, goalsData, filters) {
-  // ★ 変更：ひとことメモもフィルターの判定対象に
   if (filters.journal && journals[dateStr] && journals[dateStr].trim() !== '') return true;
-  
   if (filters.schedule && schedules[dateStr] && schedules[dateStr].length > 0) return true;
-  
   if (filters.todo) {
     const hasTodo = todos.some(t => {
       if (t.done && t.doneAt === dateStr) return true;
@@ -315,20 +225,14 @@ function hasDataOnDate(dateStr, todos, schedules, journals, goalsData, filters) 
     });
     if (hasTodo) return true;
   }
-
   if (filters.goals && goalsData && Array.isArray(goalsData.issues)) {
-    const hasGoal = goalsData.issues.some(iss => {
-      if (iss.status !== 'done') return false;
-      const dAt = iss.doneAt || iss.dueDate; 
-      return dAt === dateStr;
-    });
+    // ★ 修正：期限日の代用（dueDate）を削除し、純粋に doneAt だけを判定するようにしました
+    const hasGoal = goalsData.issues.some(iss => iss.status === 'done' && iss.doneAt === dateStr);
     if (hasGoal) return true;
   }
-
   return false;
 }
 
-// カレンダー描画
 function renderCalendar() {
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
@@ -379,9 +283,8 @@ function renderCalendar() {
   const goalsData = getStorageData(KEYS.GOALS, { issues: [] });
   const realTodayStr = toYMD(new Date());
 
-  // メイン画面のフィルター状態を取得
   const mainFilters = {
-    journal: document.getElementById('filter-journal').checked, // ★ 追加
+    journal: document.getElementById('filter-journal').checked,
     todo: document.getElementById('filter-todo').checked,
     goals: document.getElementById('filter-goals').checked,
     schedule: document.getElementById('filter-schedule').checked
@@ -409,17 +312,15 @@ function renderCalendar() {
   }
 }
 
-// 右カラムの描画
 function renderDayContent() {
   document.getElementById('view-title').textContent = `${selectedDateStr} の記録`;
 
-  const showJournal = document.getElementById('filter-journal').checked; // ★ 追加
+  const showJournal = document.getElementById('filter-journal').checked; 
   const showTodo = document.getElementById('filter-todo').checked;
   const showGoals = document.getElementById('filter-goals').checked;
   const showSched = document.getElementById('filter-schedule').checked;
 
-  // フィルターによるカードの表示切替
-  document.getElementById('card-journal').style.display = showJournal ? 'block' : 'none'; // ★ 追加
+  document.getElementById('card-journal').style.display = showJournal ? 'block' : 'none'; 
   document.getElementById('card-todo').style.display = showTodo ? 'block' : 'none';
   document.getElementById('card-goals').style.display = showGoals ? 'block' : 'none';
   document.getElementById('card-schedule').style.display = showSched ? 'block' : 'none';
@@ -429,12 +330,10 @@ function renderDayContent() {
   const journals = getStorageData(KEYS.JOURNAL, {});
   const goalsData = getStorageData(KEYS.GOALS, { issues: [] });
 
-  // ジャーナル
   if (showJournal) {
     document.getElementById('journal-text').value = journals[selectedDateStr] || '';
   }
 
-  // TODO描画
   if (showTodo) {
     const completedTodos = [];
     todos.forEach(t => {
@@ -457,10 +356,10 @@ function renderDayContent() {
     }
   }
 
-  // 課題・目標描画
   if (showGoals) {
     const issues = goalsData.issues || [];
-    const completedGoals = issues.filter(iss => iss.status === 'done' && (iss.doneAt === selectedDateStr || (!iss.doneAt && iss.dueDate === selectedDateStr)));
+    // ★ 修正：期限日の代用（dueDate）を削除
+    const completedGoals = issues.filter(iss => iss.status === 'done' && iss.doneAt === selectedDateStr);
     
     const goalsWrap = document.getElementById('goals-list');
     if (completedGoals.length === 0) {
@@ -472,7 +371,6 @@ function renderDayContent() {
     }
   }
 
-  // スケジュール描画
   if (showSched) {
     const daySchedules = schedules[selectedDateStr] || [];
     daySchedules.sort((a,b) => (a.start||'').localeCompare(b.start||''));
@@ -491,7 +389,6 @@ function renderDayContent() {
   }
 }
 
-// ジャーナルの保存
 document.getElementById('btn-save').onclick = () => {
   const text = document.getElementById('journal-text').value;
   const journals = getStorageData(KEYS.JOURNAL, {});
@@ -504,7 +401,6 @@ document.getElementById('btn-save').onclick = () => {
   setTimeout(() => btn.textContent = '保存', 1500);
 };
 
-// カレンダー操作
 document.getElementById('prev-month').onclick = () => { currentDate.setMonth(currentDate.getMonth() - 1); renderCalendar(); };
 document.getElementById('next-month').onclick = () => { currentDate.setMonth(currentDate.getMonth() + 1); renderCalendar(); };
 document.getElementById('sel-year').onchange = (e) => { currentDate.setFullYear(parseInt(e.target.value, 10)); renderCalendar(); };
@@ -516,7 +412,6 @@ document.getElementById('btn-today').onclick = () => {
   renderDayContent();
 };
 
-// メイン画面のフィルター操作
 ['filter-journal', 'filter-todo', 'filter-goals', 'filter-schedule'].forEach(id => {
   document.getElementById(id).addEventListener('change', () => {
     renderCalendar();
@@ -524,15 +419,12 @@ document.getElementById('btn-today').onclick = () => {
   });
 });
 
-// レポート画面のフィルター操作
 ['report-filter-journal', 'report-filter-todo', 'report-filter-goals', 'report-filter-schedule'].forEach(id => {
   document.getElementById(id).addEventListener('change', () => {
     generateReport();
   });
 });
 
-
-// レポート関連
 const modalOverlay = document.getElementById('report-modal');
 const reportStart = document.getElementById('report-start');
 const reportEnd = document.getElementById('report-end');
@@ -559,9 +451,8 @@ function generateReport() {
     return;
   }
 
-  // レポート用のフィルター設定を取得
   const reportFilters = {
-    journal: document.getElementById('report-filter-journal').checked, // ★ 追加
+    journal: document.getElementById('report-filter-journal').checked, 
     todo: document.getElementById('report-filter-todo').checked,
     goals: document.getElementById('report-filter-goals').checked,
     schedule: document.getElementById('report-filter-schedule').checked
@@ -585,13 +476,11 @@ function generateReport() {
   let hasAnyData = false;
 
   dates.forEach(dateStr => {
-    // フィルターを加味してデータの有無を判定
     if (!hasDataOnDate(dateStr, todos, schedules, journals, goalsData, reportFilters)) return;
     hasAnyData = true;
 
     let dayHtml = `<div class="report-day-card"><h4>📅 ${dateStr}</h4>`;
 
-    // 1. 振り返りメモ
     if (reportFilters.journal) {
       const jText = journals[dateStr];
       if (jText && jText.trim()) {
@@ -599,7 +488,6 @@ function generateReport() {
       }
     }
 
-    // 2. 完了TODO
     if (reportFilters.todo) {
       const completedTodos = [];
       todos.forEach(t => {
@@ -623,9 +511,9 @@ function generateReport() {
       }
     }
 
-    // 3. 完了した目標・課題
     if (reportFilters.goals && goalsData && Array.isArray(goalsData.issues)) {
-      const completedGoals = goalsData.issues.filter(iss => iss.status === 'done' && (iss.doneAt === dateStr || (!iss.doneAt && iss.dueDate === dateStr)));
+      // ★ 修正：期限日の代用（dueDate）を削除
+      const completedGoals = goalsData.issues.filter(iss => iss.status === 'done' && iss.doneAt === dateStr);
       if (completedGoals.length > 0) {
         dayHtml += `<div class="report-section"><h5>🎯 完了した目標・課題</h5>`;
         completedGoals.forEach(iss => {
@@ -635,7 +523,6 @@ function generateReport() {
       }
     }
 
-    // 4. スケジュール
     if (reportFilters.schedule) {
       const daySchedules = schedules[dateStr] || [];
       if (daySchedules.length > 0) {
@@ -662,11 +549,9 @@ function generateReport() {
   }
 }
 
-// 初期化
 renderCalendar();
 renderDayContent();
 
-// 他画面でデータが更新されたら自動リロード
 window.addEventListener('storage', (e) => {
   if (Object.values(KEYS).includes(e.key)) {
     renderCalendar();

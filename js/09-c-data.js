@@ -103,7 +103,7 @@
     }
   }
 
-  // --- ポップオーバー開閉ロジック（復元） ---
+  // --- ポップオーバー開閉ロジック ---
   function openPop(){
     pop.hidden = false;
     btn.setAttribute('aria-expanded','true');
@@ -133,7 +133,7 @@
     if (e.key === 'Escape' && !pop.hidden) { closePop(); btn.focus(); }
   });
 
-  // --- A案：エクスポート/インポート（復元） ---
+  // --- エクスポート/インポート ---
   const fileInput = document.getElementById('cImportFile');
   pop.addEventListener('click', async function(e){
     const tabBtn = e.target.closest('.dp-tab');
@@ -174,7 +174,7 @@
     });
   }
 
-  // --- B案：クラウド同期（安全機構付き） ---
+  // --- クラウド同期（安全・マージ機構付き） ---
   var PROF_WORK = 'work';
   var PROF_PRIVATE = 'private';
   var FILE_NAME = { work:'workspace-data.work.json', private:'workspace-data.private.json' };
@@ -248,19 +248,16 @@
       if (perm !== 'granted') { alert('フォルダへのアクセス権限が必要です。'); return; }
       await idbPut('folder:' + profile, folder);
       
-      initialLoadCompleted[profile] = false; // フォルダ変更時は再度ロック
+      initialLoadCompleted[profile] = false; 
       await autoLoad(profile, true);
       alert((profile==='work'?'仕事':'プライベート') + '用の同期フォルダを設定し、最新データを読み込みました。');
       checkSyncStatus(profile);
     } catch (e) {}
   }
 
+  // ★ 保存ロジック（競合解決策を組み込み）
   async function saveNow(profile, isAuto = false){
-    // ★ ロック確認：一度もロードが完了していない場合は上書き保存させない
-    if (!initialLoadCompleted[profile]) {
-      console.log(`[sync:${profile}] 初期ロード待ちのため保存をスキップしました。`);
-      return;
-    }
+    if (!initialLoadCompleted[profile]) return;
 
     var folder = await getFolderHandle(profile, !isAuto);
     if (!folder) { 
@@ -277,11 +274,21 @@
       
       // ★ 他のPCで更新されたファイルの検知
       if (cloudMod > localMod) {
-        console.warn(`[sync:${profile}] 他PCの更新を検知。上書きを中止し、ロードします。`);
-        await autoLoad(profile, false);
-        if (!isAuto) alert('他のPCで更新された最新データがあったため、上書きを中止して読み込みました。');
-        else showToast('他PCの更新を検知し、最新データを同期しました。');
-        return;
+        if (!isAuto) {
+          // 手動保存時：ユーザーに強制上書きするかどうか選んでもらう
+          var force = confirm('⚠️ 他のPCで更新されたクラウドデータがあります。\n\n現在のPCのデータで、強制的に上書き保存しますか？\n\n・[OK] を押すと、現在のデータで上書きします。\n・[キャンセル] を押すと、他PCのデータを読み込みます。');
+          if (!force) {
+            await autoLoad(profile, false);
+            alert('他PCの更新データを読み込みました。');
+            return; // ロードして終了
+          }
+          // OKの場合は、このまま下へ進んで強制上書きを実行！
+        } else {
+          // 自動保存時：勝手にロードしてユーザーの作業中のデータを消さないように、一旦何もしない
+          console.warn(`[sync:${profile}] 自動保存時の競合。安全のため保存もロードもスキップします。`);
+          showToast('他PCの更新があります。手動保存で確認してください。');
+          return;
+        }
       }
 
       var w = await fh.createWritable();
@@ -310,7 +317,7 @@
   async function autoLoad(profile, showMsg = false) {
     var folder = await getFolderHandle(profile, false);
     if (!folder) {
-      initialLoadCompleted[profile] = true; // 権限がない場合はロック解除して進行
+      initialLoadCompleted[profile] = true; 
       return false;
     }
     
@@ -322,7 +329,7 @@
       var localMod = getLastModified(profile);
       
       if (!showMsg && cloudMod <= localMod) {
-        initialLoadCompleted[profile] = true; // 変更なしでもロック解除
+        initialLoadCompleted[profile] = true; 
         return true;
       }
       
@@ -331,12 +338,12 @@
       
       window.applyAllData(payload); 
       setLastModified(profile, cloudMod); 
-      initialLoadCompleted[profile] = true; // ロード成功でロック解除
+      initialLoadCompleted[profile] = true; 
       
       if (showMsg) showToast(FILE_NAME[profile] + ' を読み込みました。');
       return true;
     } catch (e) {
-      initialLoadCompleted[profile] = true; // ファイルがない等のエラー時もロック解除
+      initialLoadCompleted[profile] = true; 
       if (showMsg) alert('同期ファイルが見つかりません。先に保存を実行してください。');
       return false;
     }
@@ -385,12 +392,17 @@
   function saveAutosave(st){ localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(st)); }
   var autosaveTimers = { work:null, private:null };
   
+  // ★ 自動保存ロジック（バックグラウンド判定を追加）
   function setupAutosave(profile, enabled){
     if (autosaveTimers[profile]) { clearInterval(autosaveTimers[profile]); autosaveTimers[profile] = null; }
     if (enabled) { 
       autosaveTimers[profile] = setInterval(function(){ 
+        // 画面が非表示（別のタブや最小化）の時は自動保存をストップ！
+        if (document.visibilityState === 'hidden') {
+          return;
+        }
         saveNow(profile, true); 
-      }, 30000); // 30秒に1回チェック
+      }, 30000);
     }
   }
   
@@ -398,7 +410,6 @@
   setupAutosave('work', !!st.work);
   setupAutosave('private', !!st.private);
 
-  // ★ 起動時オートロード
   setTimeout(() => {
     getFolderHandle('work', false).then(h => { if(h) autoLoad('work'); else initialLoadCompleted['work']=true; });
     getFolderHandle('private', false).then(h => { if(h) autoLoad('private'); else initialLoadCompleted['private']=true; });
