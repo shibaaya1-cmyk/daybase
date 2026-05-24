@@ -524,7 +524,7 @@
 
 
   // =========================================================
-  // ★ 修正：アーカイブ一覧のアコーディオン化（親のみ表示・クリックで詳細と子タスク展開）
+  // ★ アーカイブ一覧のアコーディオン化（配置を一番右に変更）
   // =========================================================
   const archiveModal = document.createElement('div');
   archiveModal.style.cssText = "display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.4); z-index:9999; justify-content:center; align-items:center;";
@@ -559,8 +559,9 @@
     openArchiveBtn.style.color = '#334155';
     openArchiveBtn.style.fontWeight = 'bold';
     openArchiveBtn.style.transition = '0.2s';
-    openArchiveBtn.style.marginLeft = 'auto';  
-    openArchiveBtn.style.marginRight = '16px'; 
+    
+    // ★ 変更：一番右に配置し、既存のタブの右側に余白を設ける
+    openArchiveBtn.style.marginLeft = '12px'; 
 
     openArchiveBtn.onmouseover = () => openArchiveBtn.style.background = '#e2e8f0';
     openArchiveBtn.onmouseout = () => openArchiveBtn.style.background = '#f8fafc';
@@ -570,8 +571,8 @@
       renderArchiveList();
     };
     
-    viewTabs.style.marginLeft = '0';
-    header.insertBefore(openArchiveBtn, viewTabs);
+    // ★ 変更：header要素の一番最後（viewTabsの後ろ）に挿入し、元のレイアウトを一切崩さない
+    header.appendChild(openArchiveBtn);
   }
   
   function renderArchiveList() {
@@ -581,7 +582,7 @@
       return;
     }
     
-    // ★ 親タスクのみ（parentIdがない、または親が既に存在しないもの）を抽出
+    // 親タスクのみを抽出
     const rootArchived = archived.filter(i => !i.parentId || !archived.some(p => p.id === i.parentId));
 
     rootArchived.sort((a, b) => {
@@ -596,7 +597,6 @@
       const st = STATUSES[iss.status] || STATUSES.todo;
       const dateStr = iss.doneAt ? `完了日: ${formatDate(iss.doneAt)}` : (iss.dueDate ? `期限日: ${formatDate(iss.dueDate)}` : '日付未定');
       
-      // 子タスクを取得してツリー形式のHTMLを生成
       const getChildren = (parentId) => archived.filter(i => i.parentId === parentId);
       const children = getChildren(iss.id);
       
@@ -647,7 +647,6 @@
     archiveListBody.innerHTML = html;
   }
 
-  // アコーディオンの開閉制御関数
   window.toggleArchiveDetail = function(id) {
     const el = document.getElementById('detail-' + id);
     const icon = document.getElementById('icon-toggle-' + id);
@@ -690,8 +689,6 @@
     }
   };
 
-
-  // 外部からのデータ更新を検知
   window.addEventListener('storage', e => {
     if (e.key === LS_KEY) {
       state = loadData() || { issues: [] };
