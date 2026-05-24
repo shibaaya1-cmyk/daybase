@@ -83,6 +83,7 @@
     const d = new Date(); 
     return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
   }
+  function escapeHtml(s){ return String(s).replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
 
   function updateParent(parentId) {
     if (!parentId) return;
@@ -523,12 +524,12 @@
 
 
   // =========================================================
-  // ★ 修正：アーカイブ一覧モーダルの自動生成と、常に表示されるヘッダーへのボタン追加
+  // ★ 修正：アーカイブ一覧のアコーディオン化（親のみ表示・クリックで詳細と子タスク展開）
   // =========================================================
   const archiveModal = document.createElement('div');
   archiveModal.style.cssText = "display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.4); z-index:9999; justify-content:center; align-items:center;";
   archiveModal.innerHTML = `
-    <div style="background:#fff; width:90%; max-width:600px; max-height:80vh; border-radius:8px; display:flex; flex-direction:column; box-shadow:0 4px 12px rgba(0,0,0,0.15);">
+    <div style="background:#fff; width:90%; max-width:600px; height:85vh; border-radius:8px; display:flex; flex-direction:column; box-shadow:0 4px 12px rgba(0,0,0,0.15);">
       <div style="padding:16px; border-bottom:1px solid #e2e8f0; display:flex; justify-content:space-between; align-items:center;">
         <h2 style="margin:0; font-size:16px;">📦 アーカイブ済み目標・課題</h2>
         <button id="closeArchiveModal" style="background:none; border:none; font-size:20px; cursor:pointer;">&times;</button>
@@ -544,7 +545,6 @@
   closeArchiveModal.onclick = () => archiveModal.style.display = 'none';
   archiveModal.onclick = (e) => { if(e.target === archiveModal) archiveModal.style.display = 'none'; };
 
-  // ★ 変更：常に表示されている大元の <header> にボタンを追加
   const header = document.querySelector('header');
   const viewTabs = document.getElementById('viewTabs');
   
@@ -559,8 +559,8 @@
     openArchiveBtn.style.color = '#334155';
     openArchiveBtn.style.fontWeight = 'bold';
     openArchiveBtn.style.transition = '0.2s';
-    openArchiveBtn.style.marginLeft = 'auto';  // 左のタイトルとの間に余白
-    openArchiveBtn.style.marginRight = '16px'; // 右のタブとの間に余白
+    openArchiveBtn.style.marginLeft = 'auto';  
+    openArchiveBtn.style.marginRight = '16px'; 
 
     openArchiveBtn.onmouseover = () => openArchiveBtn.style.background = '#e2e8f0';
     openArchiveBtn.onmouseout = () => openArchiveBtn.style.background = '#f8fafc';
@@ -570,7 +570,6 @@
       renderArchiveList();
     };
     
-    // 元々右寄せになっていた viewTabs のマージンを解除して、ボタンを挿入
     viewTabs.style.marginLeft = '0';
     header.insertBefore(openArchiveBtn, viewTabs);
   }
@@ -582,30 +581,65 @@
       return;
     }
     
-    // 日付降順ソート
-    archived.sort((a, b) => {
+    // ★ 親タスクのみ（parentIdがない、または親が既に存在しないもの）を抽出
+    const rootArchived = archived.filter(i => !i.parentId || !archived.some(p => p.id === i.parentId));
+
+    rootArchived.sort((a, b) => {
       const da = a.doneAt || a.dueDate || '';
       const db = b.doneAt || b.dueDate || '';
       return db.localeCompare(da);
     });
 
     let html = '<div style="display:flex; flex-direction:column; gap:8px;">';
-    archived.forEach(iss => {
+    
+    rootArchived.forEach(iss => {
       const st = STATUSES[iss.status] || STATUSES.todo;
       const dateStr = iss.doneAt ? `完了日: ${formatDate(iss.doneAt)}` : (iss.dueDate ? `期限日: ${formatDate(iss.dueDate)}` : '日付未定');
-      const parentTitle = state.issues.find(i => i.id === iss.parentId)?.title;
-      const displayTitle = parentTitle ? `[子] ${parentTitle} > ${iss.title}` : `[親] ${iss.title}`;
       
+      // 子タスクを取得してツリー形式のHTMLを生成
+      const getChildren = (parentId) => archived.filter(i => i.parentId === parentId);
+      const children = getChildren(iss.id);
+      
+      const descHtml = iss.description ? `<div style="font-size:13px; color:#475569; margin-bottom:8px; white-space:pre-wrap; background:#f1f5f9; padding:8px; border-radius:4px;">${escapeHtml(iss.description)}</div>` : '';
+      
+      let childrenHtml = '';
+      if (children.length > 0) {
+         childrenHtml += `<div style="font-size:13px; font-weight:bold; margin-bottom:4px; color:#334155;">子タスク:</div><ul style="margin:0 0 8px 0; padding-left:20px; font-size:13px; color:#475569;">`;
+         const renderChild = (child) => {
+           const cSt = STATUSES[child.status] || STATUSES.todo;
+           let cHtml = `<li><span style="color:${cSt.colorCls === 'st-done' ? '#10b981' : (cSt.colorCls === 'st-omit' ? '#f43f5e' : '#3b82f6')};">■</span> ${escapeHtml(child.title)}</li>`;
+           const subChildren = getChildren(child.id);
+           if (subChildren.length > 0) {
+             cHtml += `<ul style="margin:2px 0 2px 0; padding-left:16px;">`;
+             subChildren.forEach(sc => { cHtml += renderChild(sc); });
+             cHtml += `</ul>`;
+           }
+           return cHtml;
+         };
+         children.forEach(c => { childrenHtml += renderChild(c); });
+         childrenHtml += `</ul>`;
+      }
+
       html += `
-        <div style="background:#fff; border:1px solid #e2e8f0; border-radius:6px; padding:12px; display:flex; justify-content:space-between; align-items:center;">
-          <div>
-            <div style="font-weight:bold; font-size:14px; margin-bottom:4px;">
-              <span style="color:${st.colorCls === 'st-done' ? '#10b981' : (st.colorCls === 'st-omit' ? '#f43f5e' : '#3b82f6')}; font-size:12px; margin-right:4px;">[${st.label}]</span>
-              ${displayTitle}
+        <div style="background:#fff; border:1px solid #e2e8f0; border-radius:6px; overflow:hidden;">
+          <div onclick="toggleArchiveDetail('${iss.id}')" style="padding:12px; display:flex; justify-content:space-between; align-items:center; cursor:pointer; background:#f8fafc; transition:0.2s;">
+            <div>
+              <div style="font-weight:bold; font-size:14px; margin-bottom:4px;">
+                <span style="color:${st.colorCls === 'st-done' ? '#10b981' : (st.colorCls === 'st-omit' ? '#f43f5e' : '#3b82f6')}; font-size:12px; margin-right:4px;">[${st.label}]</span>
+                ${escapeHtml(iss.title)}
+              </div>
+              <div style="font-size:12px; color:#64748b;">${dateStr}</div>
             </div>
-            <div style="font-size:12px; color:#64748b;">${dateStr}</div>
+            <div style="display:flex; gap:8px; align-items:center;">
+              <button class="btn" onclick="event.stopPropagation(); restoreArchive('${iss.id}')" style="background:#3b82f6; color:#fff; border:none; padding:6px 12px; border-radius:4px; font-weight:bold; cursor:pointer;">ボードへ復元</button>
+              <span id="icon-toggle-${iss.id}" style="color:#94a3b8; font-size:16px; width:20px; text-align:center;">▼</span>
+            </div>
           </div>
-          <button class="btn" onclick="restoreArchive('${iss.id}')" style="background:#3b82f6; color:#fff; border:none; padding:6px 12px; border-radius:4px; font-weight:bold; cursor:pointer;">ボードへ復元</button>
+          <div id="detail-${iss.id}" style="display:none; padding:12px; border-top:1px solid #e2e8f0;">
+            ${descHtml}
+            ${childrenHtml}
+            ${(!iss.description && children.length === 0) ? '<div style="font-size:13px; color:#94a3b8;">詳細内容や子タスクはありません。</div>' : ''}
+          </div>
         </div>
       `;
     });
@@ -613,12 +647,24 @@
     archiveListBody.innerHTML = html;
   }
 
+  // アコーディオンの開閉制御関数
+  window.toggleArchiveDetail = function(id) {
+    const el = document.getElementById('detail-' + id);
+    const icon = document.getElementById('icon-toggle-' + id);
+    if(el.style.display === 'none') {
+      el.style.display = 'block';
+      icon.textContent = '▲';
+    } else {
+      el.style.display = 'none';
+      icon.textContent = '▼';
+    }
+  };
+
   window.restoreArchive = function(id) {
     if(!confirm('この課題を復元してボードに戻しますか？')) return;
     const issue = getIssue(id);
     if(issue) {
       issue.isArchived = false;
-      // 子タスクも一括復元
       const restoreCascade = (parentId) => {
         state.issues.filter(i => i.parentId === parentId).forEach(c => {
           c.isArchived = false;
@@ -627,7 +673,6 @@
       };
       restoreCascade(id);
       
-      // 親タスクがアーカイブされているなら親も一緒に復元
       const restoreParent = (child) => {
         if(child.parentId) {
           const parent = getIssue(child.parentId);
