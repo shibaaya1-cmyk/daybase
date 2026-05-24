@@ -58,6 +58,19 @@
     dpDel: document.getElementById('dpDelete')
   };
 
+  // ★ アーカイブボタンを動的生成（HTMLを書き換えずに機能追加）
+  const dpFooter = els.dpClose.parentElement;
+  const dpArchiveBtn = document.createElement('button');
+  dpArchiveBtn.className = 'btn';
+  dpArchiveBtn.style.marginRight = 'auto';
+  dpArchiveBtn.style.background = '#f8fafc';
+  dpArchiveBtn.style.border = '1px solid #cbd5e1';
+  dpArchiveBtn.style.color = '#475569';
+  dpArchiveBtn.style.fontWeight = 'bold';
+  dpArchiveBtn.textContent = '📦 アーカイブ';
+  dpFooter.insertBefore(dpArchiveBtn, dpFooter.firstChild);
+  els.dpArchive = dpArchiveBtn;
+
   // --- Utility ---
   function uid() { return 'i_' + Math.random().toString(36).slice(2, 9); }
   function loadData() { try { return JSON.parse(localStorage.getItem(LS_KEY)); } catch(e) { return null; } }
@@ -67,7 +80,8 @@
     const [y,m,d] = dStr.split('-'); return `${m}/${d}`;
   }
   function todayYMD() {
-    const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    const d = new Date(); 
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
   }
 
   function updateParent(parentId) {
@@ -102,18 +116,18 @@
 
       if (allOmit) {
         parent.status = 'omit';
-        parent.doneAt = null; // ★追加：オミット時は完了日クリア
+        parent.doneAt = null; 
       } else if (!hasTodo && !hasDoing && !hasReview) {
-        if (parent.status !== 'done') { // ★追加：完了になった瞬間だけ記録
+        if (parent.status !== 'done') { 
           parent.status = 'done';
           parent.doneAt = todayYMD(); 
         }
       } else if (hasDoing || hasReview || hasDone) {
         parent.status = 'doing';
-        parent.doneAt = null; // ★追加
+        parent.doneAt = null; 
       } else {
         parent.status = 'todo';
-        parent.doneAt = null; // ★追加
+        parent.doneAt = null; 
       }
     }
 
@@ -125,8 +139,10 @@
   function buildTree() {
     const map = {};
     const roots = [];
-    state.issues.forEach(iss => { map[iss.id] = { ...iss, children: [], isOpen: iss.isOpen !== false }; });
-    state.issues.forEach(iss => {
+    // ★ アーカイブされていないタスクだけを抽出
+    const activeIssues = state.issues.filter(i => !i.isArchived);
+    activeIssues.forEach(iss => { map[iss.id] = { ...iss, children: [], isOpen: iss.isOpen !== false }; });
+    activeIssues.forEach(iss => {
       if (iss.parentId && map[iss.parentId]) {
         map[iss.parentId].children.push(map[iss.id]);
       } else {
@@ -144,7 +160,8 @@
     const newIss = {
       id: uid(), parentId: parentId, title: title.trim(), description: '',
       status: 'todo', startDate: '', dueDate: '', syncTodo: false, comments: [], isOpen: true,
-      doneAt: null // ★追加：新規作成時は完了日空っぽ
+      doneAt: null,
+      isArchived: false // ★ 新規作成時はアーカイブフラグOFF
     };
     state.issues.push(newIss);
     saveData(); render();
@@ -232,9 +249,12 @@
     els.boardWrap.innerHTML = '';
     const keys = Object.keys(STATUSES);
     
+    // ★ アーカイブされていないタスクだけを抽出
+    const activeIssues = state.issues.filter(i => !i.isArchived);
+
     keys.forEach(k => {
       const st = STATUSES[k];
-      const items = state.issues.filter(i => i.status === k);
+      const items = activeIssues.filter(i => i.status === k);
       
       const col = document.createElement('div');
       col.className = 'board-col';
@@ -256,8 +276,6 @@
         const iss = getIssue(id);
         if(iss && iss.status !== k) {
           iss.status = k;
-          
-          // ★追加：ドラッグ＆ドロップでステータスが変わった時の完了日記録
           if (k === 'done') iss.doneAt = todayYMD();
           else iss.doneAt = null;
 
@@ -412,7 +430,6 @@
     if(!iss) return;
     iss.title = els.dpTitle.value.trim() || '無題';
     
-    // ★追加：詳細パネルでステータスが変わった時の完了日記録
     const newStatus = els.dpStatus.value;
     if (iss.status !== newStatus) {
       if (newStatus === 'done') iss.doneAt = todayYMD();
@@ -456,6 +473,30 @@
   };
 
   els.dpDel.onclick = () => deleteIssue(activeIssueId);
+
+  // ★ 追加：アーカイブ処理
+  els.dpArchive.onclick = () => {
+    if(!activeIssueId) return;
+    const iss = getIssue(activeIssueId);
+    if(!iss) return;
+
+    if(!confirm('この課題をアーカイブしますか？\n（ボードからは非表示になりますが、ジャーナルの「アーカイブ済み目標」から確認・復元できます）')) return;
+
+    // 子タスクも道連れでアーカイブする
+    const archiveCascade = (parentId) => {
+      state.issues.filter(i => i.parentId === parentId).forEach(c => {
+        c.isArchived = true;
+        archiveCascade(c.id);
+      });
+    };
+
+    iss.isArchived = true;
+    archiveCascade(iss.id);
+    
+    saveData();
+    closeDetail();
+  };
+
   els.dpClose.onclick = closeDetail;
 
   els.tabs.forEach(btn => {
@@ -482,7 +523,6 @@
     }, 50);
   };
 
-  // 外部からのデータ更新を検知
   window.addEventListener('storage', e => {
     if (e.key === LS_KEY) {
       state = loadData() || { issues: [] };

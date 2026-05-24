@@ -114,9 +114,12 @@
       </div>
     </div>
 
-    <div class="card" style="padding: 12px;">
+    <div class="card" style="padding: 12px; display: flex; flex-direction: column; gap: 8px;">
       <button id="btn-report" style="width:100%; padding:8px; border:1px solid var(--border); border-radius:6px; background:#fff; cursor:pointer; font-weight:bold; transition:0.2s;">
         📊 期間レポートを見る
+      </button>
+      <button id="btn-archive-list" style="width:100%; padding:8px; border:1px solid var(--border); border-radius:6px; background:#f8fafc; cursor:pointer; font-weight:bold; transition:0.2s; color:var(--text-sub);">
+        📦 アーカイブ済み目標
       </button>
     </div>
   </div>
@@ -179,6 +182,16 @@
         </div>
       </div>
       <div class="modal-body" id="report-body"></div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="archive-modal">
+    <div class="modal-content" style="max-width: 600px;">
+      <div class="modal-header">
+        <h2>📦 アーカイブ済み目標・課題</h2>
+        <button class="btn-close" id="btn-close-archive" title="閉じる">&times;</button>
+      </div>
+      <div class="modal-body" id="archive-body"></div>
     </div>
   </div>
 
@@ -281,15 +294,10 @@ function renderDayContent() {
 
   if (showGoals) {
     const issues = goalsData.issues || [];
-    // ★ 表示用に親タスクを特定する再帰関数
-    const getParentTitle = (id) => {
-        const issue = issues.find(i => i.id === id);
-        return issue ? issue.title : null;
-    };
-    
+    const getParentTitle = (id) => { const issue = issues.find(i => i.id === id); return issue ? issue.title : null; };
     const completedGoals = issues.filter(iss => iss.status === 'done' && getSafeDate(iss.doneAt) === selectedDateStr);
-    const goalsWrap = document.getElementById('goals-list');
     
+    const goalsWrap = document.getElementById('goals-list');
     goalsWrap.innerHTML = completedGoals.length === 0 ? '<div class="empty-msg">この日に完了した目標・課題はありません</div>' : completedGoals.map(iss => {
         const parentTitle = getParentTitle(iss.parentId);
         const displayTitle = parentTitle ? `[子] ${parentTitle} > ${iss.title}` : `[親] ${iss.title}`;
@@ -322,6 +330,10 @@ document.getElementById('btn-today').onclick = () => { currentDate = new Date();
 ['filter-journal', 'filter-todo', 'filter-goals', 'filter-schedule'].forEach(id => { document.getElementById(id).addEventListener('change', () => { renderCalendar(); renderDayContent(); }); });
 ['report-filter-journal', 'report-filter-todo', 'report-filter-goals', 'report-filter-schedule'].forEach(id => { document.getElementById(id).addEventListener('change', () => { generateReport(); }); });
 
+
+/* ========================================================= */
+/* ★ レポート機能 */
+/* ========================================================= */
 const modalOverlay = document.getElementById('report-modal');
 const reportStart = document.getElementById('report-start');
 const reportEnd = document.getElementById('report-end');
@@ -333,7 +345,7 @@ document.getElementById('btn-report').onclick = () => {
   reportStart.value = toYMD(firstDay); reportEnd.value = toYMD(today); generateReport(); 
 };
 document.getElementById('btn-close-modal').onclick = () => modalOverlay.style.display = 'none';
-modalOverlay.onclick = (e) => { if (e.target === modalOverlay) modalOverlay.style.display = 'none'; };
+modalOverlay.addEventListener('click', (e) => { if (e.target === modalOverlay) modalOverlay.style.display = 'none'; });
 document.getElementById('btn-generate-report').onclick = () => generateReport();
 
 function generateReport() {
@@ -391,8 +403,100 @@ function generateReport() {
   reportBody.innerHTML = !hasAnyData ? '<div class="empty-msg" style="margin-top:40px; font-size:14px;">指定された期間に表示できる記録はありません</div>' : html;
 }
 
+/* ========================================================= */
+/* ★ アーカイブ一覧機能 */
+/* ========================================================= */
+const archiveModal = document.getElementById('archive-modal');
+const archiveBody = document.getElementById('archive-body');
+
+document.getElementById('btn-archive-list').onclick = () => {
+  archiveModal.style.display = 'flex';
+  renderArchiveList();
+};
+document.getElementById('btn-close-archive').onclick = () => archiveModal.style.display = 'none';
+archiveModal.addEventListener('click', (e) => { if (e.target === archiveModal) archiveModal.style.display = 'none'; });
+
+function renderArchiveList() {
+  const goalsData = getStorageData(KEYS.GOALS, { issues: [] });
+  const issues = goalsData.issues || [];
+  const archived = issues.filter(iss => iss.isArchived);
+
+  if (archived.length === 0) {
+    archiveBody.innerHTML = '<div class="empty-msg" style="margin-top:40px; font-size:14px;">アーカイブされた目標・課題はありません</div>';
+    return;
+  }
+
+  // 日付の降順で並び替え
+  archived.sort((a, b) => {
+    const da = a.doneAt || a.dueDate || '';
+    const db = b.doneAt || b.dueDate || '';
+    return db.localeCompare(da);
+  });
+
+  const getParentTitle = (id) => {
+      const issue = issues.find(i => i.id === id);
+      return issue ? issue.title : null;
+  };
+
+  let html = '<div style="display:flex; flex-direction:column; gap:12px;">';
+  archived.forEach(iss => {
+    const parentTitle = getParentTitle(iss.parentId);
+    const displayTitle = parentTitle ? `[子] ${parentTitle} > ${iss.title}` : `[親] ${iss.title}`;
+    const dateStr = iss.doneAt ? `完了日: ${getSafeDate(iss.doneAt)}` : (iss.dueDate ? `期限日: ${getSafeDate(iss.dueDate)}` : '日付未定');
+    const st = iss.status === 'done' ? '✅' : (iss.status === 'omit' ? '❌' : '🎯');
+
+    html += `
+      <div class="report-day-card" style="margin-bottom:0; padding:16px; display:flex; justify-content:space-between; align-items:center;">
+        <div>
+          <div style="font-weight:bold; color:var(--text-main); margin-bottom:4px; font-size:15px;">${st} ${escapeHtml(displayTitle)}</div>
+          <div style="font-size:12px; color:var(--text-sub);">${dateStr}</div>
+        </div>
+        <button class="cal-btn" style="background:var(--accent); color:#fff; border:none; padding:6px 12px; font-weight:bold;" onclick="restoreArchive('${iss.id}')">復元する</button>
+      </div>
+    `;
+  });
+  html += '</div>';
+  archiveBody.innerHTML = html;
+}
+
+// アーカイブから復元する処理（親タスク・子タスクも一緒に自動復元）
+window.restoreArchive = function(id) {
+  if (!confirm('この目標・課題を復元してボードに戻しますか？')) return;
+  const goalsData = getStorageData(KEYS.GOALS, { issues: [] });
+  const issue = goalsData.issues.find(i => i.id === id);
+  if (issue) {
+    issue.isArchived = false;
+    // 子タスクも一括復元
+    const restoreChildren = (parentId) => {
+       goalsData.issues.filter(i => i.parentId === parentId).forEach(c => {
+          c.isArchived = false;
+          restoreChildren(c.id);
+       });
+    };
+    restoreChildren(id);
+    
+    // 親タスクがアーカイブされているなら親も復元
+    const restoreParent = (child) => {
+       if(child.parentId) {
+           const parent = goalsData.issues.find(i => i.id === child.parentId);
+           if(parent && parent.isArchived) {
+               parent.isArchived = false;
+               restoreParent(parent);
+           }
+       }
+    }
+    restoreParent(issue);
+
+    localStorage.setItem(KEYS.GOALS, JSON.stringify(goalsData));
+    renderArchiveList(); // 一覧を再描画
+    renderCalendar();
+    renderDayContent();
+  }
+};
+
+/* ========================================================= */
 renderCalendar(); renderDayContent();
-window.addEventListener('storage', (e) => { if (Object.values(KEYS).includes(e.key)) { renderCalendar(); renderDayContent(); if (modalOverlay.style.display === 'flex') generateReport(); } });
+window.addEventListener('storage', (e) => { if (Object.values(KEYS).includes(e.key)) { renderCalendar(); renderDayContent(); if (modalOverlay.style.display === 'flex') generateReport(); if (archiveModal.style.display === 'flex') renderArchiveList(); } });
 </script>
 </body>
 </html>
