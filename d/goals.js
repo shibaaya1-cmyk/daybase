@@ -139,7 +139,6 @@
   function buildTree() {
     const map = {};
     const roots = [];
-    // ★ アーカイブされていないタスクだけを抽出
     const activeIssues = state.issues.filter(i => !i.isArchived);
     activeIssues.forEach(iss => { map[iss.id] = { ...iss, children: [], isOpen: iss.isOpen !== false }; });
     activeIssues.forEach(iss => {
@@ -161,7 +160,7 @@
       id: uid(), parentId: parentId, title: title.trim(), description: '',
       status: 'todo', startDate: '', dueDate: '', syncTodo: false, comments: [], isOpen: true,
       doneAt: null,
-      isArchived: false // ★ 新規作成時はアーカイブフラグOFF
+      isArchived: false
     };
     state.issues.push(newIss);
     saveData(); render();
@@ -249,7 +248,6 @@
     els.boardWrap.innerHTML = '';
     const keys = Object.keys(STATUSES);
     
-    // ★ アーカイブされていないタスクだけを抽出
     const activeIssues = state.issues.filter(i => !i.isArchived);
 
     keys.forEach(k => {
@@ -474,7 +472,7 @@
 
   els.dpDel.onclick = () => deleteIssue(activeIssueId);
 
-  // ★ 追加：アーカイブ実行処理
+  // ★ アーカイブ実行処理
   els.dpArchive.onclick = () => {
     if(!activeIssueId) return;
     const iss = getIssue(activeIssueId);
@@ -482,7 +480,6 @@
 
     if(!confirm('この課題をアーカイブしますか？\n（ボードからは非表示になりますが、アーカイブ一覧からいつでも復元できます）')) return;
 
-    // 子タスクも道連れでアーカイブする
     const archiveCascade = (parentId) => {
       state.issues.filter(i => i.parentId === parentId).forEach(c => {
         c.isArchived = true;
@@ -526,7 +523,7 @@
 
 
   // =========================================================
-  // ★ 追加：目標ボード内「アーカイブ一覧モーダル」の自動生成と制御
+  // ★ 修正：アーカイブ一覧モーダルの自動生成と、常に表示されるヘッダーへのボタン追加
   // =========================================================
   const archiveModal = document.createElement('div');
   archiveModal.style.cssText = "display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.4); z-index:9999; justify-content:center; align-items:center;";
@@ -547,18 +544,35 @@
   closeArchiveModal.onclick = () => archiveModal.style.display = 'none';
   archiveModal.onclick = (e) => { if(e.target === archiveModal) archiveModal.style.display = 'none'; };
 
-  // ヘッダー（＋ 新規課題の横）にアーカイブ一覧ボタンを追加
-  const openArchiveBtn = document.createElement('button');
-  openArchiveBtn.className = 'btn';
-  openArchiveBtn.textContent = '📦 アーカイブ一覧';
-  openArchiveBtn.style.marginLeft = '8px';
-  openArchiveBtn.onclick = () => {
-    archiveModal.style.display = 'flex';
-    renderArchiveList();
-  };
+  // ★ 変更：常に表示されている大元の <header> にボタンを追加
+  const header = document.querySelector('header');
+  const viewTabs = document.getElementById('viewTabs');
   
-  if (els.addRootBtn && els.addRootBtn.parentElement) {
-    els.addRootBtn.parentElement.appendChild(openArchiveBtn);
+  if (header && viewTabs) {
+    const openArchiveBtn = document.createElement('button');
+    openArchiveBtn.textContent = '📦 アーカイブ一覧';
+    openArchiveBtn.style.padding = '6px 12px';
+    openArchiveBtn.style.border = '1px solid #cbd5e1';
+    openArchiveBtn.style.background = '#f8fafc';
+    openArchiveBtn.style.borderRadius = '6px';
+    openArchiveBtn.style.cursor = 'pointer';
+    openArchiveBtn.style.color = '#334155';
+    openArchiveBtn.style.fontWeight = 'bold';
+    openArchiveBtn.style.transition = '0.2s';
+    openArchiveBtn.style.marginLeft = 'auto';  // 左のタイトルとの間に余白
+    openArchiveBtn.style.marginRight = '16px'; // 右のタブとの間に余白
+
+    openArchiveBtn.onmouseover = () => openArchiveBtn.style.background = '#e2e8f0';
+    openArchiveBtn.onmouseout = () => openArchiveBtn.style.background = '#f8fafc';
+
+    openArchiveBtn.onclick = () => {
+      archiveModal.style.display = 'flex';
+      renderArchiveList();
+    };
+    
+    // 元々右寄せになっていた viewTabs のマージンを解除して、ボタンを挿入
+    viewTabs.style.marginLeft = '0';
+    header.insertBefore(openArchiveBtn, viewTabs);
   }
   
   function renderArchiveList() {
