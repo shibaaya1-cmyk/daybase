@@ -183,13 +183,7 @@
   </div>
 
 <script>
-const KEYS = {
-  TODO: 'todosV1',
-  SCHEDULE: 'schedulesV1',
-  JOURNAL: 'journalsV1',
-  GOALS: 'D_BACKLOG_V1' 
-};
-
+const KEYS = { TODO: 'todosV1', SCHEDULE: 'schedulesV1', JOURNAL: 'journalsV1', GOALS: 'D_BACKLOG_V1' };
 let currentDate = new Date(); 
 let selectedDateStr = toYMD(new Date()); 
 
@@ -200,23 +194,9 @@ function toYMD(d) {
   return `${y}-${m}-${day}`;
 }
 
-// ★ 追加：文字化けした日付データを強制的に修復する関数
-function getSafeDate(dStr) {
-  if (!dStr || typeof dStr !== 'string') return null;
-  return dStr.substring(0, 10); // "2026-05-2401" などを "2026-05-24" に直す
-}
-
-function escapeHtml(str) {
-  if (!str) return '';
-  return String(str).replace(/[&<>"']/g, m => ({
-    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
-  }[m]));
-}
-
-function getStorageData(key, fallback) {
-  try { return JSON.parse(localStorage.getItem(key)) || fallback; } 
-  catch(e) { return fallback; }
-}
+function getSafeDate(dStr) { return dStr ? String(dStr).substring(0, 10) : null; }
+function escapeHtml(str) { return String(str).replace(/[&<>"']/g, m => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m])); }
+function getStorageData(key, fallback) { try { return JSON.parse(localStorage.getItem(key)) || fallback; } catch(e) { return fallback; } }
 
 function hasDataOnDate(dateStr, todos, schedules, journals, goalsData, filters) {
   if (filters.journal && journals[dateStr] && journals[dateStr].trim() !== '') return true;
@@ -224,22 +204,13 @@ function hasDataOnDate(dateStr, todos, schedules, journals, goalsData, filters) 
   if (filters.todo) {
     const hasTodo = todos.some(t => {
       if (t.done && t.doneAt === dateStr) return true;
-      if (Array.isArray(t.subtasks)) {
-        return t.subtasks.some(s => s.done && s.doneAt === dateStr);
-      }
+      if (Array.isArray(t.subtasks)) return t.subtasks.some(s => s.done && s.doneAt === dateStr);
       return false;
     });
     if (hasTodo) return true;
   }
   if (filters.goals && goalsData && Array.isArray(goalsData.issues)) {
-    const hasGoal = goalsData.issues.some(iss => {
-      if (iss.status !== 'done') return false;
-      // ★ 修復関数を通してから比較する
-      const safeDoneAt = getSafeDate(iss.doneAt);
-      const safeDueDate = getSafeDate(iss.dueDate);
-      const dAt = safeDoneAt || safeDueDate;
-      return dAt === dateStr;
-    });
+    const hasGoal = goalsData.issues.some(iss => iss.status === 'done' && getSafeDate(iss.doneAt) === dateStr);
     if (hasGoal) return true;
   }
   return false;
@@ -248,85 +219,40 @@ function hasDataOnDate(dateStr, todos, schedules, journals, goalsData, filters) 
 function renderCalendar() {
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
-  
   const selYear = document.getElementById('sel-year');
   const selMonth = document.getElementById('sel-month');
-  
-  selYear.innerHTML = '';
-  const thisYear = new Date().getFullYear();
-  for(let y = thisYear - 10; y <= thisYear + 5; y++) {
-    const opt = document.createElement('option');
-    opt.value = y;
-    opt.textContent = y;
-    if(y === year) opt.selected = true;
-    selYear.appendChild(opt);
-  }
-  
+  selYear.innerHTML = ''; const thisYear = new Date().getFullYear();
+  for(let y = thisYear - 10; y <= thisYear + 5; y++) { const opt = document.createElement('option'); opt.value = y; opt.textContent = y; if(y === year) opt.selected = true; selYear.appendChild(opt); }
   selMonth.innerHTML = '';
-  for(let m = 0; m < 12; m++) {
-    const opt = document.createElement('option');
-    opt.value = m;
-    opt.textContent = m + 1;
-    if(m === month) opt.selected = true;
-    selMonth.appendChild(opt);
-  }
+  for(let m = 0; m < 12; m++) { const opt = document.createElement('option'); opt.value = m; opt.textContent = m + 1; if(m === month) opt.selected = true; selMonth.appendChild(opt); }
 
   const firstDay = new Date(year, month, 1);
   const lastDay = new Date(year, month + 1, 0);
-  
-  const grid = document.getElementById('cal-grid');
-  grid.innerHTML = '';
-  
+  const grid = document.getElementById('cal-grid'); grid.innerHTML = '';
   const dayNames = ['日', '月', '火', '水', '木', '金', '土'];
-  dayNames.forEach(d => {
-    const el = document.createElement('div');
-    el.className = 'day-name';
-    el.textContent = d;
-    grid.appendChild(el);
-  });
-
-  for (let i = 0; i < firstDay.getDay(); i++) {
-    grid.appendChild(document.createElement('div'));
-  }
+  dayNames.forEach(d => { const el = document.createElement('div'); el.className = 'day-name'; el.textContent = d; grid.appendChild(el); });
+  for (let i = 0; i < firstDay.getDay(); i++) grid.appendChild(document.createElement('div'));
 
   const todos = getStorageData(KEYS.TODO, []);
   const schedules = getStorageData(KEYS.SCHEDULE, {});
   const journals = getStorageData(KEYS.JOURNAL, {});
   const goalsData = getStorageData(KEYS.GOALS, { issues: [] });
   const realTodayStr = toYMD(new Date());
-
-  const mainFilters = {
-    journal: document.getElementById('filter-journal').checked,
-    todo: document.getElementById('filter-todo').checked,
-    goals: document.getElementById('filter-goals').checked,
-    schedule: document.getElementById('filter-schedule').checked
-  };
+  const mainFilters = { journal: document.getElementById('filter-journal').checked, todo: document.getElementById('filter-todo').checked, goals: document.getElementById('filter-goals').checked, schedule: document.getElementById('filter-schedule').checked };
 
   for (let i = 1; i <= lastDay.getDate(); i++) {
-    const d = new Date(year, month, i);
-    const dStr = toYMD(d);
-    
-    const cell = document.createElement('div');
-    cell.className = 'cal-cell';
-    cell.textContent = i;
-    
+    const d = new Date(year, month, i); const dStr = toYMD(d);
+    const cell = document.createElement('div'); cell.className = 'cal-cell'; cell.textContent = i;
     if (dStr === realTodayStr) cell.classList.add('is-today');
     if (dStr === selectedDateStr) cell.classList.add('active');
-    
     if (hasDataOnDate(dStr, todos, schedules, journals, goalsData, mainFilters)) cell.classList.add('has-data');
-
-    cell.onclick = () => {
-      selectedDateStr = dStr;
-      renderCalendar(); 
-      renderDayContent(); 
-    };
+    cell.onclick = () => { selectedDateStr = dStr; renderCalendar(); renderDayContent(); };
     grid.appendChild(cell);
   }
 }
 
 function renderDayContent() {
   document.getElementById('view-title').textContent = `${selectedDateStr} の記録`;
-
   const showJournal = document.getElementById('filter-journal').checked; 
   const showTodo = document.getElementById('filter-todo').checked;
   const showGoals = document.getElementById('filter-goals').checked;
@@ -342,105 +268,59 @@ function renderDayContent() {
   const journals = getStorageData(KEYS.JOURNAL, {});
   const goalsData = getStorageData(KEYS.GOALS, { issues: [] });
 
-  if (showJournal) {
-    document.getElementById('journal-text').value = journals[selectedDateStr] || '';
-  }
-
+  if (showJournal) document.getElementById('journal-text').value = journals[selectedDateStr] || '';
   if (showTodo) {
     const completedTodos = [];
     todos.forEach(t => {
-      if (t.done && t.doneAt === selectedDateStr) {
-        completedTodos.push(`[親] ${t.icon||''} ${t.title || '(無題)'}`);
-      }
-      if (Array.isArray(t.subtasks)) {
-        t.subtasks.forEach(s => {
-          if (s.done && s.doneAt === selectedDateStr) {
-            completedTodos.push(`[子] ${t.title || '(無題)'} > ${s.title || '(無題)'}`);
-          }
-        });
-      }
+      if (t.done && t.doneAt === selectedDateStr) completedTodos.push(`[親] ${t.icon||''} ${t.title || '(無題)'}`);
+      if (Array.isArray(t.subtasks)) t.subtasks.forEach(s => { if (s.done && s.doneAt === selectedDateStr) completedTodos.push(`[子] ${t.title || '(無題)'} > ${s.title || '(無題)'}`); });
     });
     const todoWrap = document.getElementById('todo-list');
-    if (completedTodos.length === 0) {
-      todoWrap.innerHTML = '<div class="empty-msg">この日に完了したTODOはありません</div>';
-    } else {
-      todoWrap.innerHTML = completedTodos.map(text => `<div class="list-item">✅ ${escapeHtml(text)}</div>`).join('');
-    }
+    todoWrap.innerHTML = completedTodos.length === 0 ? '<div class="empty-msg">この日に完了したTODOはありません</div>' : completedTodos.map(text => `<div class="list-item">✅ ${escapeHtml(text)}</div>`).join('');
   }
 
   if (showGoals) {
     const issues = goalsData.issues || [];
-    // ★ 修復関数を通してから比較する
-    const completedGoals = issues.filter(iss => {
-      if (iss.status !== 'done') return false;
-      const safeDoneAt = getSafeDate(iss.doneAt);
-      const safeDueDate = getSafeDate(iss.dueDate);
-      return safeDoneAt === selectedDateStr || (!safeDoneAt && safeDueDate === selectedDateStr);
-    });
+    // ★ 表示用に親タスクを特定する再帰関数
+    const getParentTitle = (id) => {
+        const issue = issues.find(i => i.id === id);
+        return issue ? issue.title : null;
+    };
     
+    const completedGoals = issues.filter(iss => iss.status === 'done' && getSafeDate(iss.doneAt) === selectedDateStr);
     const goalsWrap = document.getElementById('goals-list');
-    if (completedGoals.length === 0) {
-      goalsWrap.innerHTML = '<div class="empty-msg">この日に完了した目標・課題はありません</div>';
-    } else {
-      goalsWrap.innerHTML = completedGoals.map(iss => 
-        `<div class="list-item">🎯 <span>${escapeHtml(iss.title)}</span></div>`
-      ).join('');
-    }
+    
+    goalsWrap.innerHTML = completedGoals.length === 0 ? '<div class="empty-msg">この日に完了した目標・課題はありません</div>' : completedGoals.map(iss => {
+        const parentTitle = getParentTitle(iss.parentId);
+        const displayTitle = parentTitle ? `[子] ${parentTitle} > ${iss.title}` : `[親] ${iss.title}`;
+        return `<div class="list-item">🎯 <span>${escapeHtml(displayTitle)}</span></div>`;
+    }).join('');
   }
 
   if (showSched) {
     const daySchedules = schedules[selectedDateStr] || [];
     daySchedules.sort((a,b) => (a.start||'').localeCompare(b.start||''));
-    
     const schedWrap = document.getElementById('schedule-list');
-    if (daySchedules.length === 0) {
-      schedWrap.innerHTML = '<div class="empty-msg">この日のスケジュール記録はありません</div>';
-    } else {
-      schedWrap.innerHTML = daySchedules.map(ev => 
-        `<div class="list-item">
-          <span style="color:var(--accent); font-weight:bold; width:85px; flex-shrink:0;">${ev.start||'--:--'} - ${ev.end||'--:--'}</span>
-          <span>${ev.icon||''} ${escapeHtml(ev.title||'(無題)')}</span>
-        </div>`
-      ).join('');
-    }
+    schedWrap.innerHTML = daySchedules.length === 0 ? '<div class="empty-msg">この日のスケジュール記録はありません</div>' : daySchedules.map(ev => `<div class="list-item"><span style="color:var(--accent); font-weight:bold; width:85px; flex-shrink:0;">${ev.start||'--:--'} - ${ev.end||'--:--'}</span><span>${ev.icon||''} ${escapeHtml(ev.title||'(無題)')}</span></div>`).join('');
   }
 }
 
 document.getElementById('btn-save').onclick = () => {
   const text = document.getElementById('journal-text').value;
-  const journals = getStorageData(KEYS.JOURNAL, {});
-  journals[selectedDateStr] = text;
+  const journals = getStorageData(KEYS.JOURNAL, {}); journals[selectedDateStr] = text;
   localStorage.setItem(KEYS.JOURNAL, JSON.stringify(journals));
-  
   renderCalendar();
-  const btn = document.getElementById('btn-save');
-  btn.textContent = '保存しました！';
-  setTimeout(() => btn.textContent = '保存', 1500);
+  const btn = document.getElementById('btn-save'); btn.textContent = '保存しました！'; setTimeout(() => btn.textContent = '保存', 1500);
 };
 
 document.getElementById('prev-month').onclick = () => { currentDate.setMonth(currentDate.getMonth() - 1); renderCalendar(); };
 document.getElementById('next-month').onclick = () => { currentDate.setMonth(currentDate.getMonth() + 1); renderCalendar(); };
 document.getElementById('sel-year').onchange = (e) => { currentDate.setFullYear(parseInt(e.target.value, 10)); renderCalendar(); };
 document.getElementById('sel-month').onchange = (e) => { currentDate.setMonth(parseInt(e.target.value, 10)); renderCalendar(); };
-document.getElementById('btn-today').onclick = () => {
-  currentDate = new Date(); 
-  selectedDateStr = toYMD(new Date()); 
-  renderCalendar();
-  renderDayContent();
-};
+document.getElementById('btn-today').onclick = () => { currentDate = new Date(); selectedDateStr = toYMD(new Date()); renderCalendar(); renderDayContent(); };
 
-['filter-journal', 'filter-todo', 'filter-goals', 'filter-schedule'].forEach(id => {
-  document.getElementById(id).addEventListener('change', () => {
-    renderCalendar();
-    renderDayContent();
-  });
-});
-
-['report-filter-journal', 'report-filter-todo', 'report-filter-goals', 'report-filter-schedule'].forEach(id => {
-  document.getElementById(id).addEventListener('change', () => {
-    generateReport();
-  });
-});
+['filter-journal', 'filter-todo', 'filter-goals', 'filter-schedule'].forEach(id => { document.getElementById(id).addEventListener('change', () => { renderCalendar(); renderDayContent(); }); });
+['report-filter-journal', 'report-filter-todo', 'report-filter-goals', 'report-filter-schedule'].forEach(id => { document.getElementById(id).addEventListener('change', () => { generateReport(); }); });
 
 const modalOverlay = document.getElementById('report-modal');
 const reportStart = document.getElementById('report-start');
@@ -449,139 +329,70 @@ const reportBody = document.getElementById('report-body');
 
 document.getElementById('btn-report').onclick = () => {
   modalOverlay.style.display = 'flex';
-  const today = new Date();
-  const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
-  reportStart.value = toYMD(firstDay);
-  reportEnd.value = toYMD(today);
-  generateReport(); 
+  const today = new Date(); const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+  reportStart.value = toYMD(firstDay); reportEnd.value = toYMD(today); generateReport(); 
 };
 document.getElementById('btn-close-modal').onclick = () => modalOverlay.style.display = 'none';
 modalOverlay.onclick = (e) => { if (e.target === modalOverlay) modalOverlay.style.display = 'none'; };
 document.getElementById('btn-generate-report').onclick = () => generateReport();
 
 function generateReport() {
-  const startStr = reportStart.value;
-  const endStr = reportEnd.value;
-  
-  if (!startStr || !endStr || startStr > endStr) {
-    reportBody.innerHTML = '<div class="empty-msg" style="margin-top:40px; font-size:14px;">正しい期間を指定してください</div>';
-    return;
-  }
+  const startStr = reportStart.value; const endStr = reportEnd.value;
+  if (!startStr || !endStr || startStr > endStr) { reportBody.innerHTML = '<div class="empty-msg" style="margin-top:40px; font-size:14px;">正しい期間を指定してください</div>'; return; }
 
-  const reportFilters = {
-    journal: document.getElementById('report-filter-journal').checked, 
-    todo: document.getElementById('report-filter-todo').checked,
-    goals: document.getElementById('report-filter-goals').checked,
-    schedule: document.getElementById('report-filter-schedule').checked
-  };
-
+  const reportFilters = { journal: document.getElementById('report-filter-journal').checked, todo: document.getElementById('report-filter-todo').checked, goals: document.getElementById('report-filter-goals').checked, schedule: document.getElementById('report-filter-schedule').checked };
   const todos = getStorageData(KEYS.TODO, []);
   const schedules = getStorageData(KEYS.SCHEDULE, {});
   const journals = getStorageData(KEYS.JOURNAL, {});
   const goalsData = getStorageData(KEYS.GOALS, { issues: [] });
 
-  const dates = [];
-  let d = new Date(startStr);
-  const endD = new Date(endStr);
-  while (d <= endD) {
-    dates.push(toYMD(d));
-    d.setDate(d.getDate() + 1);
-  }
+  const dates = []; let d = new Date(startStr); const endD = new Date(endStr);
+  while (d <= endD) { dates.push(toYMD(d)); d.setDate(d.getDate() + 1); }
   dates.reverse();
 
-  let html = '';
-  let hasAnyData = false;
-
+  let html = ''; let hasAnyData = false;
   dates.forEach(dateStr => {
     if (!hasDataOnDate(dateStr, todos, schedules, journals, goalsData, reportFilters)) return;
     hasAnyData = true;
 
     let dayHtml = `<div class="report-day-card"><h4>📅 ${dateStr}</h4>`;
-
-    if (reportFilters.journal) {
-      const jText = journals[dateStr];
-      if (jText && jText.trim()) {
-        dayHtml += `<div class="report-section"><h5>📝 振り返りメモ</h5><div class="report-text">${escapeHtml(jText)}</div></div>`;
-      }
-    }
-
+    if (reportFilters.journal) { const jText = journals[dateStr]; if (jText && jText.trim()) dayHtml += `<div class="report-section"><h5>📝 振り返りメモ</h5><div class="report-text">${escapeHtml(jText)}</div></div>`; }
     if (reportFilters.todo) {
       const completedTodos = [];
       todos.forEach(t => {
-        if (t.done && t.doneAt === dateStr) {
-          completedTodos.push(`[親] ${t.icon||''} ${t.title || '(無題)'}`);
-        }
-        if (Array.isArray(t.subtasks)) {
-          t.subtasks.forEach(s => {
-            if (s.done && s.doneAt === dateStr) {
-              completedTodos.push(`[子] ${t.title || '(無題)'} > ${s.title || '(無題)'}`);
-            }
-          });
-        }
+        if (t.done && t.doneAt === dateStr) completedTodos.push(`[親] ${t.icon||''} ${t.title || '(無題)'}`);
+        if (Array.isArray(t.subtasks)) t.subtasks.forEach(s => { if (s.done && s.doneAt === dateStr) completedTodos.push(`[子] ${t.title || '(無題)'} > ${s.title || '(無題)'}`); });
       });
-      if (completedTodos.length > 0) {
-        dayHtml += `<div class="report-section"><h5>✅ 完了したTODO</h5>`;
-        completedTodos.forEach(text => {
-          dayHtml += `<div class="report-list-item">✅ <span>${escapeHtml(text)}</span></div>`;
-        });
-        dayHtml += `</div>`;
-      }
+      if (completedTodos.length > 0) { dayHtml += `<div class="report-section"><h5>✅ 完了したTODO</h5>`; completedTodos.forEach(text => dayHtml += `<div class="report-list-item">✅ <span>${escapeHtml(text)}</span></div>`); dayHtml += `</div>`; }
     }
-
     if (reportFilters.goals && goalsData && Array.isArray(goalsData.issues)) {
-      // ★ 修復関数を通してから比較する
-      const completedGoals = goalsData.issues.filter(iss => {
-        if (iss.status !== 'done') return false;
-        const safeDoneAt = getSafeDate(iss.doneAt);
-        const safeDueDate = getSafeDate(iss.dueDate);
-        return safeDoneAt === dateStr || (!safeDoneAt && safeDueDate === dateStr);
-      });
-      
+      const completedGoals = goalsData.issues.filter(iss => iss.status === 'done' && getSafeDate(iss.doneAt) === dateStr);
       if (completedGoals.length > 0) {
         dayHtml += `<div class="report-section"><h5>🎯 完了した目標・課題</h5>`;
         completedGoals.forEach(iss => {
-          dayHtml += `<div class="report-list-item">🎯 <span>${escapeHtml(iss.title)}</span></div>`;
+            const parentTitle = goalsData.issues.find(i=>i.id===iss.parentId)?.title;
+            const displayTitle = parentTitle ? `[子] ${parentTitle} > ${iss.title}` : `[親] ${iss.title}`;
+            dayHtml += `<div class="report-list-item">🎯 <span>${escapeHtml(displayTitle)}</span></div>`;
         });
         dayHtml += `</div>`;
       }
     }
-
     if (reportFilters.schedule) {
       const daySchedules = schedules[dateStr] || [];
       if (daySchedules.length > 0) {
         daySchedules.sort((a,b) => (a.start||'').localeCompare(b.start||''));
         dayHtml += `<div class="report-section"><h5>🕒 スケジュール</h5>`;
-        daySchedules.forEach(ev => {
-          dayHtml += `<div class="report-list-item">
-            <span style="color:var(--accent); font-weight:bold; width:85px; flex-shrink:0;">${ev.start||'--:--'} - ${ev.end||'--:--'}</span>
-            <span>${ev.icon||''} ${escapeHtml(ev.title||'(無題)')}</span>
-          </div>`;
-        });
+        daySchedules.forEach(ev => dayHtml += `<div class="report-list-item"><span style="color:var(--accent); font-weight:bold; width:85px; flex-shrink:0;">${ev.start||'--:--'} - ${ev.end||'--:--'}</span><span>${ev.icon||''} ${escapeHtml(ev.title||'(無題)')}</span></div>`);
         dayHtml += `</div>`;
       }
     }
-
-    dayHtml += `</div>`;
-    html += dayHtml;
+    dayHtml += `</div>`; html += dayHtml;
   });
-
-  if (!hasAnyData) {
-    reportBody.innerHTML = '<div class="empty-msg" style="margin-top:40px; font-size:14px;">指定された期間に表示できる記録はありません</div>';
-  } else {
-    reportBody.innerHTML = html;
-  }
+  reportBody.innerHTML = !hasAnyData ? '<div class="empty-msg" style="margin-top:40px; font-size:14px;">指定された期間に表示できる記録はありません</div>' : html;
 }
 
-renderCalendar();
-renderDayContent();
-
-window.addEventListener('storage', (e) => {
-  if (Object.values(KEYS).includes(e.key)) {
-    renderCalendar();
-    renderDayContent();
-    if (modalOverlay.style.display === 'flex') generateReport();
-  }
-});
+renderCalendar(); renderDayContent();
+window.addEventListener('storage', (e) => { if (Object.values(KEYS).includes(e.key)) { renderCalendar(); renderDayContent(); if (modalOverlay.style.display === 'flex') generateReport(); } });
 </script>
 </body>
 </html>

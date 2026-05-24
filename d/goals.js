@@ -66,11 +66,8 @@
     if(!dStr) return '-';
     const [y,m,d] = dStr.split('-'); return `${m}/${d}`;
   }
-  
-  // ★ ここが前回破損していた部分です（修正済み）
   function todayYMD() {
-    const d = new Date(); 
-    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
   }
 
   function updateParent(parentId) {
@@ -105,18 +102,18 @@
 
       if (allOmit) {
         parent.status = 'omit';
-        parent.doneAt = null;
+        parent.doneAt = null; // ★追加：オミット時は完了日クリア
       } else if (!hasTodo && !hasDoing && !hasReview) {
-        if (parent.status !== 'done') {
-           parent.status = 'done';
-           parent.doneAt = todayYMD(); 
+        if (parent.status !== 'done') { // ★追加：完了になった瞬間だけ記録
+          parent.status = 'done';
+          parent.doneAt = todayYMD(); 
         }
       } else if (hasDoing || hasReview || hasDone) {
         parent.status = 'doing';
-        parent.doneAt = null;
+        parent.doneAt = null; // ★追加
       } else {
         parent.status = 'todo';
-        parent.doneAt = null;
+        parent.doneAt = null; // ★追加
       }
     }
 
@@ -147,7 +144,7 @@
     const newIss = {
       id: uid(), parentId: parentId, title: title.trim(), description: '',
       status: 'todo', startDate: '', dueDate: '', syncTodo: false, comments: [], isOpen: true,
-      doneAt: null 
+      doneAt: null // ★追加：新規作成時は完了日空っぽ
     };
     state.issues.push(newIss);
     saveData(); render();
@@ -259,6 +256,8 @@
         const iss = getIssue(id);
         if(iss && iss.status !== k) {
           iss.status = k;
+          
+          // ★追加：ドラッグ＆ドロップでステータスが変わった時の完了日記録
           if (k === 'done') iss.doneAt = todayYMD();
           else iss.doneAt = null;
 
@@ -279,8 +278,8 @@
         card.ondragend = () => card.classList.remove('dragging');
         card.onclick = () => openDetail(iss.id);
         
-        let metaHtml = '<span>';
-        if(iss.syncTodo) metaHtml += '📅 ';
+        let metaHtml = `<span>`;
+        if(iss.syncTodo) metaHtml += `📅 `;
         metaHtml += `${formatDate(iss.startDate)} ~ ${formatDate(iss.dueDate)}</span>`;
         if(iss.comments.length > 0) metaHtml += `<span>💬 ${iss.comments.length}</span>`;
 
@@ -412,7 +411,8 @@
     const iss = getIssue(activeIssueId);
     if(!iss) return;
     iss.title = els.dpTitle.value.trim() || '無題';
-
+    
+    // ★追加：詳細パネルでステータスが変わった時の完了日記録
     const newStatus = els.dpStatus.value;
     if (iss.status !== newStatus) {
       if (newStatus === 'done') iss.doneAt = todayYMD();
@@ -482,6 +482,7 @@
     }, 50);
   };
 
+  // 外部からのデータ更新を検知
   window.addEventListener('storage', e => {
     if (e.key === LS_KEY) {
       state = loadData() || { issues: [] };
