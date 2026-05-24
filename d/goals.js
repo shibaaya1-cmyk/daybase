@@ -58,7 +58,7 @@
     dpDel: document.getElementById('dpDelete')
   };
 
-  // ★ アーカイブボタンを動的生成（HTMLを書き換えずに機能追加）
+  // ★ 詳細パネルの左下にアーカイブボタンを動的生成
   const dpFooter = els.dpClose.parentElement;
   const dpArchiveBtn = document.createElement('button');
   dpArchiveBtn.className = 'btn';
@@ -474,13 +474,13 @@
 
   els.dpDel.onclick = () => deleteIssue(activeIssueId);
 
-  // ★ 追加：アーカイブ処理
+  // ★ 追加：アーカイブ実行処理
   els.dpArchive.onclick = () => {
     if(!activeIssueId) return;
     const iss = getIssue(activeIssueId);
     if(!iss) return;
 
-    if(!confirm('この課題をアーカイブしますか？\n（ボードからは非表示になりますが、ジャーナルの「アーカイブ済み目標」から確認・復元できます）')) return;
+    if(!confirm('この課題をアーカイブしますか？\n（ボードからは非表示になりますが、アーカイブ一覧からいつでも復元できます）')) return;
 
     // 子タスクも道連れでアーカイブする
     const archiveCascade = (parentId) => {
@@ -495,6 +495,7 @@
     
     saveData();
     closeDetail();
+    render();
   };
 
   els.dpClose.onclick = closeDetail;
@@ -523,6 +524,115 @@
     }, 50);
   };
 
+
+  // =========================================================
+  // ★ 追加：目標ボード内「アーカイブ一覧モーダル」の自動生成と制御
+  // =========================================================
+  const archiveModal = document.createElement('div');
+  archiveModal.style.cssText = "display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.4); z-index:9999; justify-content:center; align-items:center;";
+  archiveModal.innerHTML = `
+    <div style="background:#fff; width:90%; max-width:600px; max-height:80vh; border-radius:8px; display:flex; flex-direction:column; box-shadow:0 4px 12px rgba(0,0,0,0.15);">
+      <div style="padding:16px; border-bottom:1px solid #e2e8f0; display:flex; justify-content:space-between; align-items:center;">
+        <h2 style="margin:0; font-size:16px;">📦 アーカイブ済み目標・課題</h2>
+        <button id="closeArchiveModal" style="background:none; border:none; font-size:20px; cursor:pointer;">&times;</button>
+      </div>
+      <div id="archiveListBody" style="padding:16px; overflow-y:auto; flex:1; background:#f8fafc;"></div>
+    </div>
+  `;
+  document.body.appendChild(archiveModal);
+
+  const closeArchiveModal = document.getElementById('closeArchiveModal');
+  const archiveListBody = document.getElementById('archiveListBody');
+  
+  closeArchiveModal.onclick = () => archiveModal.style.display = 'none';
+  archiveModal.onclick = (e) => { if(e.target === archiveModal) archiveModal.style.display = 'none'; };
+
+  // ヘッダー（＋ 新規課題の横）にアーカイブ一覧ボタンを追加
+  const openArchiveBtn = document.createElement('button');
+  openArchiveBtn.className = 'btn';
+  openArchiveBtn.textContent = '📦 アーカイブ一覧';
+  openArchiveBtn.style.marginLeft = '8px';
+  openArchiveBtn.onclick = () => {
+    archiveModal.style.display = 'flex';
+    renderArchiveList();
+  };
+  
+  if (els.addRootBtn && els.addRootBtn.parentElement) {
+    els.addRootBtn.parentElement.appendChild(openArchiveBtn);
+  }
+  
+  function renderArchiveList() {
+    const archived = state.issues.filter(i => i.isArchived);
+    if (archived.length === 0) {
+      archiveListBody.innerHTML = '<div style="color:#64748b; font-size:13px; text-align:center; padding:20px;">アーカイブされた課題はありません</div>';
+      return;
+    }
+    
+    // 日付降順ソート
+    archived.sort((a, b) => {
+      const da = a.doneAt || a.dueDate || '';
+      const db = b.doneAt || b.dueDate || '';
+      return db.localeCompare(da);
+    });
+
+    let html = '<div style="display:flex; flex-direction:column; gap:8px;">';
+    archived.forEach(iss => {
+      const st = STATUSES[iss.status] || STATUSES.todo;
+      const dateStr = iss.doneAt ? `完了日: ${formatDate(iss.doneAt)}` : (iss.dueDate ? `期限日: ${formatDate(iss.dueDate)}` : '日付未定');
+      const parentTitle = state.issues.find(i => i.id === iss.parentId)?.title;
+      const displayTitle = parentTitle ? `[子] ${parentTitle} > ${iss.title}` : `[親] ${iss.title}`;
+      
+      html += `
+        <div style="background:#fff; border:1px solid #e2e8f0; border-radius:6px; padding:12px; display:flex; justify-content:space-between; align-items:center;">
+          <div>
+            <div style="font-weight:bold; font-size:14px; margin-bottom:4px;">
+              <span style="color:${st.colorCls === 'st-done' ? '#10b981' : (st.colorCls === 'st-omit' ? '#f43f5e' : '#3b82f6')}; font-size:12px; margin-right:4px;">[${st.label}]</span>
+              ${displayTitle}
+            </div>
+            <div style="font-size:12px; color:#64748b;">${dateStr}</div>
+          </div>
+          <button class="btn" onclick="restoreArchive('${iss.id}')" style="background:#3b82f6; color:#fff; border:none; padding:6px 12px; border-radius:4px; font-weight:bold; cursor:pointer;">ボードへ復元</button>
+        </div>
+      `;
+    });
+    html += '</div>';
+    archiveListBody.innerHTML = html;
+  }
+
+  window.restoreArchive = function(id) {
+    if(!confirm('この課題を復元してボードに戻しますか？')) return;
+    const issue = getIssue(id);
+    if(issue) {
+      issue.isArchived = false;
+      // 子タスクも一括復元
+      const restoreCascade = (parentId) => {
+        state.issues.filter(i => i.parentId === parentId).forEach(c => {
+          c.isArchived = false;
+          restoreCascade(c.id);
+        });
+      };
+      restoreCascade(id);
+      
+      // 親タスクがアーカイブされているなら親も一緒に復元
+      const restoreParent = (child) => {
+        if(child.parentId) {
+          const parent = getIssue(child.parentId);
+          if(parent && parent.isArchived) {
+            parent.isArchived = false;
+            restoreParent(parent);
+          }
+        }
+      };
+      restoreParent(issue);
+      
+      saveData();
+      renderArchiveList();
+      render();
+    }
+  };
+
+
+  // 外部からのデータ更新を検知
   window.addEventListener('storage', e => {
     if (e.key === LS_KEY) {
       state = loadData() || { issues: [] };
