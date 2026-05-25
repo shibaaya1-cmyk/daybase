@@ -511,10 +511,16 @@
       el.suggest.style.display = 'block';
     }
 
-    function toggleTodoSuggest() {
+function toggleTodoSuggest() {
       const todos = safeGetData(KEYS.TODOS, []);
+      
+      // ▼ ここを追加：目標・課題（バックログ）のデータを取得
+      const backlogData = safeGetData('D_BACKLOG_V1', { issues: [] });
+      const issues = Array.isArray(backlogData.issues) ? backlogData.issues : [];
+      
       const leaves = [];
 
+      // 1. TODOの抽出
       todos.forEach(root => {
         if (!root) return;
         if (!root.subtasks || root.subtasks.length === 0) {
@@ -542,8 +548,34 @@
           }
         });
       });
+
+      // 2. 目標・課題の抽出
+      const parentIssueIds = new Set(issues.map(i => i.parentId).filter(Boolean));
+      issues.forEach(issue => {
+        // 同期オン(syncTodo: true)、未完了、未アーカイブ、かつ子タスクを持たない末端タスクを抽出
+        if (issue.syncTodo && issue.status !== 'done' && issue.status !== 'omit' && !issue.isArchived) {
+          if (!parentIssueIds.has(issue.id)) {
+            let fullTitle = issue.title || '(無題)';
+            let curr = issue;
+            // 親課題のタイトルを遡って繋げる
+            while(curr.parentId) {
+              const parent = issues.find(p => p.id === curr.parentId);
+              if (parent) {
+                fullTitle = (parent.title || '(無題)') + '_' + fullTitle;
+                curr = parent;
+              } else {
+                break;
+              }
+            }
+            // 判別しやすいように [目標] を付け、アイコンを的にする
+            fullTitle = '[目標] ' + fullTitle;
+            leaves.push({ title: fullTitle, icon: '🎯' });
+          }
+        }
+      });
       
-      el.suggest.innerHTML = '<div style="padding:8px; font-weight:700; font-size:11px; color:var(--text-sub); background:#f8fafc;">TODOから選択 (未完了の末端タスク)</div>';
+      // サジェストボックスの描画
+      el.suggest.innerHTML = '<div style="padding:8px; font-weight:700; font-size:11px; color:var(--text-sub); background:#f8fafc;">TODO・目標から選択 (未完了の末端タスク)</div>';
       
       if(leaves.length === 0) {
         el.suggest.innerHTML += '<div class="suggest-item" style="color:var(--text-sub)">選択できるタスクはありません</div>';
@@ -556,6 +588,7 @@
             el.title.value = t.title; 
             el.icon.value = t.icon; 
             
+            // アイコンパレットの選択状態を更新
             document.querySelectorAll('.swatch-icon').forEach(s => {
               s.classList.remove('active');
               if(s.getAttribute('data-icon') === t.icon) s.classList.add('active');
