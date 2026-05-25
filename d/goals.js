@@ -524,7 +524,7 @@
 
 
   // =========================================================
-  // ★ アーカイブ一覧のアコーディオン化（配置を一番右に変更）
+  // ★ アーカイブ一覧のアコーディオン化（レイアウトを美しく3分割）
   // =========================================================
   const archiveModal = document.createElement('div');
   archiveModal.style.cssText = "display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.4); z-index:9999; justify-content:center; align-items:center;";
@@ -547,8 +547,43 @@
 
   const header = document.querySelector('header');
   const viewTabs = document.getElementById('viewTabs');
+  const addBtn = document.getElementById('addRootTaskBtn');
   
-  if (header && viewTabs) {
+  if (header && viewTabs && addBtn) {
+    // ★ 変更：ヘッダーを「左(タイトル)・中央(タブ＋新規)・右(アーカイブ)」の3ブロックに整理
+    header.style.display = 'flex';
+    header.style.justifyContent = 'space-between';
+    header.style.alignItems = 'center';
+
+    // 1. 左側（タイトル）
+    const title = header.querySelector('h1') || header.firstElementChild;
+    if (title) {
+      title.style.flex = '1';
+      title.style.margin = '0';
+      title.style.textAlign = 'left';
+    }
+
+    // 2. 中央（ビュー切り替えタブ ＋ 新規課題ボタン）
+    const centerWrap = document.createElement('div');
+    centerWrap.style.flex = '1';
+    centerWrap.style.display = 'flex';
+    centerWrap.style.justifyContent = 'center';
+    centerWrap.style.alignItems = 'center';
+    centerWrap.style.gap = '12px'; // ボタン同士の間隔
+
+    // 要素を移動
+    viewTabs.style.margin = '0'; // 既存のマージンをリセット
+    addBtn.style.margin = '0';
+    centerWrap.appendChild(viewTabs);
+    centerWrap.appendChild(addBtn);
+    header.appendChild(centerWrap);
+
+    // 3. 右側（アーカイブ一覧ボタン）
+    const rightWrap = document.createElement('div');
+    rightWrap.style.flex = '1';
+    rightWrap.style.display = 'flex';
+    rightWrap.style.justifyContent = 'flex-end';
+
     const openArchiveBtn = document.createElement('button');
     openArchiveBtn.textContent = '📦 アーカイブ一覧';
     openArchiveBtn.style.padding = '6px 12px';
@@ -560,9 +595,6 @@
     openArchiveBtn.style.fontWeight = 'bold';
     openArchiveBtn.style.transition = '0.2s';
     
-    // ★ 変更：一番右に配置し、既存のタブの右側に余白を設ける
-    openArchiveBtn.style.marginLeft = '12px'; 
-
     openArchiveBtn.onmouseover = () => openArchiveBtn.style.background = '#e2e8f0';
     openArchiveBtn.onmouseout = () => openArchiveBtn.style.background = '#f8fafc';
 
@@ -571,8 +603,8 @@
       renderArchiveList();
     };
     
-    // ★ 変更：header要素の一番最後（viewTabsの後ろ）に挿入し、元のレイアウトを一切崩さない
-    header.appendChild(openArchiveBtn);
+    rightWrap.appendChild(openArchiveBtn);
+    header.appendChild(rightWrap);
   }
   
   function renderArchiveList() {
