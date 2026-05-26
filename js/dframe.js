@@ -6,9 +6,10 @@
   const host  = document.getElementById('panelHost');
   const tabs  = [...document.querySelectorAll('.tab-btn')];
   
-  // ★ journal を追加
+  // ★ keep(付箋) と journal を追加
   const panels = {
     calendar: document.getElementById('panel-calendar'),
+    keep:     document.getElementById('panel-keep'),     // ← 追加
     todo:     document.getElementById('panel-todo'),
     mindmap:  document.getElementById('panel-mindmap'),
     memo:     document.getElementById('panel-memo'),
@@ -18,9 +19,10 @@
   };
   const STORAGE_KEY = 'D_ACTIVE_TAB_V2'; // V2: 新タブ構成
 
-  // タブ→外部HTMLの対応 (★ journal を追加)
+  // タブ→外部HTMLの対応 (★ keep, journal を追加)
   const includeMap = {
     calendar: 'd/calendar.html',
+    keep:     'd/keep.html',         // ← 追加（これから作成する付箋ボードのHTML）
     todo:     'd/dtodo.html',
     mindmap:  'd/mindmap.html',
     goals:    'd/goals.html',
@@ -29,7 +31,7 @@
   };
 
 async function loadPanel(tab){
-  /* ===== カレンダー（既存：iframe + calendar.js 注入） ===== */
+  /* ===== カレンダー ===== */
   if (tab === 'calendar') {
     const el = panels.calendar;
     if (!el || el.dataset.loaded === 'true') return;
@@ -70,15 +72,40 @@ async function loadPanel(tab){
     });
 
     const calendarURL = new URL('d/calendar.html', location.href);
-    calendarURL.searchParams.set('v', Date.now());   // キャッシュ回避
-    calendarURL.searchParams.set('scale', '0.9');    // 任意倍率
+    calendarURL.searchParams.set('v', Date.now());
+    calendarURL.searchParams.set('scale', '0.9');
     iframe.src = calendarURL.href;
 
     el.dataset.loaded = 'true';
     return;
   }
 
-  /* ===== TODO一括管理（新規：iframe で読込） ===== */
+  /* ===== 付箋ボード (Keep) (新規：iframe で読込) ===== */
+  if (tab === 'keep') {
+    const el = panels.keep;
+    if (!el || el.dataset.loaded === 'true') return;
+
+    el.innerHTML = `
+      <div class="card" style="padding:0; position:relative; height:100%;">
+        <div id="keepDiag" style="position:absolute;left:8px;top:8px;font-size:12px;color:#64748b;z-index:2">loading…</div>
+        <iframe id="keepFrame" title="付箋ボード" style="width:100%;height:100%;border:0;display:block"></iframe>
+      </div>`;
+
+    const diag = el.querySelector('#keepDiag');
+    const ifr  = el.querySelector('#keepFrame');
+
+    ifr.addEventListener('load',  () => { try{ diag.remove(); }catch{} });
+    ifr.addEventListener('error', () => { diag.textContent = 'ERROR: keep.html failed to load'; });
+
+    const keepURL = new URL('d/keep.html', location.href);
+    keepURL.searchParams.set('v', Date.now()); // キャッシュ回避
+    ifr.src = keepURL.href;
+
+    el.dataset.loaded = 'true';
+    return;
+  }
+
+  /* ===== TODO一括管理 ===== */
   if (tab === 'todo') {
     const el = panels.todo;
     if (!el || el.dataset.loaded === 'true') return;
@@ -96,23 +123,21 @@ async function loadPanel(tab){
     ifr.addEventListener('error', () => { diag.textContent = 'ERROR: dtodo.html failed to load'; });
 
     const todoURL = new URL('d/dtodo.html', location.href);
-    todoURL.searchParams.set('v', Date.now()); // キャッシュ回避
+    todoURL.searchParams.set('v', Date.now());
     ifr.src = todoURL.href;
 
     el.dataset.loaded = 'true';
     return;
   }
 
-  /* ===== マインドマップ（iframe で読込） ===== */
+  /* ===== マインドマップ ===== */
   if (tab === 'mindmap') {
     const el = panels.mindmap;
     if (!el || el.dataset.loaded === 'true') return;
 
     el.innerHTML = `
       <div class="card" style="position:relative; height:100%;">
-        <div id="mmDiag" style="position:absolute;left:8px;top:8px;font-size:12px;color:#64748b;z-index:2">
-          loading…
-        </div>
+        <div id="mmDiag" style="position:absolute;left:8px;top:8px;font-size:12px;color:#64748b;z-index:2">loading…</div>
         <iframe id="mindmapFrame" title="マインドマップ"></iframe>
       </div>`;
 
@@ -123,23 +148,21 @@ async function loadPanel(tab){
     ifr.addEventListener('error', () => { diag.textContent = 'ERROR: mindmap.html failed to load'; });
 
     const mmURL = new URL('d/mindmap.html', location.href);
-    mmURL.searchParams.set('v', Date.now()); // キャッシュ回避
+    mmURL.searchParams.set('v', Date.now());
     ifr.src = mmURL.href;
 
     el.dataset.loaded = 'true';
     return;
   }
 
-  /* ===== メモ（iframe で読込） ===== */
+  /* ===== メモ ===== */
   if (tab === 'memo') {
     const el = panels.memo;
     if (!el || el.dataset.loaded === 'true') return;
 
     el.innerHTML = `
       <div class="card" style="position:relative; height:100%;">
-        <div id="memoDiag" style="position:absolute;left:8px;top:8px;font-size:12px;color:#64748b;z-index:2">
-          loading…
-        </div>
+        <div id="memoDiag" style="position:absolute;left:8px;top:8px;font-size:12px;color:#64748b;z-index:2">loading…</div>
         <iframe id="memoFrame" title="メモ" style="width:100%;height:100%;border:0;display:block"></iframe>
       </div>`;
 
@@ -150,23 +173,21 @@ async function loadPanel(tab){
     ifr.addEventListener('error', () => { diag.textContent = 'ERROR: dmemo.html failed to load'; });
 
     const memoURL = new URL('d/dmemo.html', location.href);
-    memoURL.searchParams.set('v', Date.now()); // キャッシュ回避
+    memoURL.searchParams.set('v', Date.now());
     ifr.src = memoURL.href;
 
     el.dataset.loaded = 'true';
     return;
   }
 
-  /* ★★★ 目標進捗管理（iframe で読込） ★★★ */
+  /* ===== 目標進捗管理 ===== */
   if (tab === 'goals') {
     const el = panels.goals;
     if (!el || el.dataset.loaded === 'true') return;
 
     el.innerHTML = `
       <div class="card" style="position:relative; height:100%;">
-        <div id="goalsDiag" style="position:absolute;left:8px;top:8px;font-size:12px;color:#64748b;z-index:2">
-          loading…
-        </div>
+        <div id="goalsDiag" style="position:absolute;left:8px;top:8px;font-size:12px;color:#64748b;z-index:2">loading…</div>
         <iframe id="goalsFrame" title="目標進捗管理" style="width:100%;height:100%;border:0;display:block"></iframe>
       </div>`;
 
@@ -177,23 +198,21 @@ async function loadPanel(tab){
     ifr.addEventListener('error', () => { diag.textContent = 'ERROR: goals.html failed to load'; });
 
     const goalsURL = new URL('d/goals.html', location.href);
-    goalsURL.searchParams.set('v', Date.now()); // キャッシュ回避
+    goalsURL.searchParams.set('v', Date.now());
     ifr.src = goalsURL.href;
 
     el.dataset.loaded = 'true';
     return;
   }
 
-  /* ★★★ ジャーナル（iframe で読込） ★★★ */
+  /* ===== ジャーナル ===== */
   if (tab === 'journal') {
     const el = panels.journal;
     if (!el || el.dataset.loaded === 'true') return;
 
     el.innerHTML = `
       <div class="card" style="position:relative; height:100%; padding:0;">
-        <div id="journalDiag" style="position:absolute;left:8px;top:8px;font-size:12px;color:#64748b;z-index:2">
-          loading…
-        </div>
+        <div id="journalDiag" style="position:absolute;left:8px;top:8px;font-size:12px;color:#64748b;z-index:2">loading…</div>
         <iframe id="journalFrame" title="ジャーナル" style="width:100%;height:100%;border:0;display:block"></iframe>
       </div>`;
 
@@ -204,15 +223,15 @@ async function loadPanel(tab){
     ifr.addEventListener('error', () => { diag.textContent = 'ERROR: journal.html failed to load'; });
 
     const url = new URL('d/journal.html', location.href);
-    url.searchParams.set('v', Date.now()); // キャッシュ回避
+    url.searchParams.set('v', Date.now());
     ifr.src = url.href;
 
     el.dataset.loaded = 'true';
     return;
   }
 
-  /* ===== それ以外（web 互換）は従来どおり ===== */
-  if (tab === 'web') return; // 互換パネルは内蔵 iframe のまま
+  /* ===== それ以外（web 互換） ===== */
+  if (tab === 'web') return; 
 
   const el = panels[tab];
   if (!el || el.dataset.loaded === 'true') return;
@@ -238,7 +257,9 @@ async function loadPanel(tab){
 
   function setActive(tab){
     tabs.forEach(b => b.setAttribute('aria-selected', String(b.dataset.tab === tab)));
-    Object.entries(panels).forEach(([k,el]) => { el.dataset.active = String(k === tab); });
+    Object.entries(panels).forEach(([k,el]) => { 
+      if(el) el.dataset.active = String(k === tab); 
+    });
     try { localStorage.setItem(STORAGE_KEY, tab); } catch {}
     loadPanel(tab);
     host.focus({preventScroll:true});
@@ -258,6 +279,7 @@ async function loadPanel(tab){
     if (data.type === 'D_OPEN_URL' && typeof data.url === 'string' && data.url) {
       setActive('web'); webview.src = data.url;
     }
+    // Bフレームの「保存」ボタンから呼ばれるタブ切り替え処理
     if (data.type === 'D_SWITCH_TAB' && typeof data.tab === 'string') {
       if (panels[data.tab]) setActive(data.tab);
     }
@@ -270,6 +292,6 @@ async function loadPanel(tab){
     }
   });
 
-  // 親へ「準備完了」を通知（index の D_READY 待ち用）
+  // 親へ「準備完了」を通知
   try { window.parent.postMessage({ type:'D_READY' }, '*'); } catch {}
 })();

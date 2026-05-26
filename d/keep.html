@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>付箋ボード</title>
+<style>
+  body {
+    margin: 0;
+    padding: 0;
+    background-color: #f1f5f9;
+    background-image: radial-gradient(#cbd5e1 1px, transparent 1px);
+    background-size: 20px 20px;
+    height: 100vh;
+    overflow: hidden;
+    font-family: system-ui, -apple-system, sans-serif;
+  }
+  
+  /* ボード全体のエリア */
+  #board {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+  }
+
+  /* 付箋（ノート）の見た目 */
+  .note {
+    position: absolute;
+    width: 220px;
+    min-height: 180px;
+    padding: 16px;
+    box-sizing: border-box;
+    border-radius: 2px;
+    box-shadow: 2px 4px 8px rgba(0,0,0,0.15);
+    cursor: grab;
+    display: flex;
+    flex-direction: column;
+    transition: box-shadow 0.2s;
+  }
+  .note:active {
+    cursor: grabbing;
+    box-shadow: 4px 8px 16px rgba(0,0,0,0.25);
+    z-index: 100 !important;
+  }
+  
+  /* 画鋲のような装飾 */
+  .note::before {
+    content: '';
+    position: absolute;
+    top: 6px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #ef4444;
+    box-shadow: inset -2px -2px 4px rgba(0,0,0,0.3), 1px 2px 2px rgba(0,0,0,0.2);
+  }
+
+  /* テキスト部分 */
+  .note-text {
+    margin-top: 12px;
+    flex: 1;
+    font-size: 14px;
+    color: #333;
+    white-space: pre-wrap;
+    outline: none;
+    line-height: 1.5;
+  }
+
+  /* 削除ボタン */
+  .btn-delete {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 20px;
+    height: 20px;
+    background: rgba(0,0,0,0.05);
+    border: none;
+    border-radius: 50%;
+    color: #666;
+    font-size: 12px;
+    cursor: pointer;
+    display: none;
+    align-items: center;
+    justify-content: center;
+  }
+  .note:hover .btn-delete {
+    display: flex;
+  }
+  .btn-delete:hover {
+    background: rgba(255,0,0,0.1);
+    color: #dc2626;
+  }
+  
+  /* 色変更パレット */
+  .color-picker {
+    display: flex;
+    gap: 4px;
+    margin-top: 10px;
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+  .note:hover .color-picker { opacity: 1; }
+  .color-dot {
+    width: 16px; height: 16px; border-radius: 50%; cursor: pointer; border: 1px solid rgba(0,0,0,0.1);
+  }
+
+  /* ★追加：右下のフローティング「＋」ボタン */
+  #addNoteBtn {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: #3b82f6;
+    color: #fff;
+    border: none;
+    font-size: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+    transition: all 0.2s;
+    z-index: 1000;
+  }
+  #addNoteBtn:hover {
+    background: #2563eb;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(59, 130, 246, 0.5);
+  }
+</style>
+</head>
+<body>
+
+  <div id="board"></div>
+
+  <button id="addNoteBtn" title="新しい付箋を追加">＋</button>
+
+  <script src="keep.js"></script>
+</body>
+</html>
