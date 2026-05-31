@@ -2,6 +2,7 @@
   'use strict';
 
   const LS_KEY = 'D_MEMO_CAT_V1';
+  const KEEP_NOTES_KEY = 'D_KEEP_NOTES_V1';
 
   const el = {
     folderList: document.getElementById('folderList'),
@@ -10,7 +11,11 @@
     editorWrap: document.getElementById('editorWrap'),
     noSelection: document.getElementById('noSelection'),
     memoTitle: document.getElementById('memoTitle'),
-    memoContent: document.getElementById('memoContent')
+    memoContent: document.getElementById('memoContent'),
+    
+    toggleNotesBtn: document.getElementById('toggleNotesBtn'),
+    notesSidebar: document.getElementById('notesSidebar'),
+    nsList: document.getElementById('nsList')
   };
 
   let state = loadData() || {
@@ -43,7 +48,6 @@
     }
   }
 
-  // メモの移動
   function moveMemoToFolder(memoId, targetFolderId) {
     const memo = state.memos[memoId];
     if (!memo || memo.folderId === targetFolderId) return;
@@ -63,9 +67,8 @@
     saveData(); render();
   }
 
-  // 循環参照のチェック
   function isDescendant(checkFolderId, targetParentId) {
-    if (checkFolderId === targetParentId) return true; // 自分自身
+    if (checkFolderId === targetParentId) return true;
     let current = state.folders.find(f => f.id === targetParentId);
     while (current && current.parentId !== null) {
       if (current.parentId === checkFolderId) return true;
@@ -74,9 +77,8 @@
     return false;
   }
 
-  // フォルダの移動（親の変更）
   function moveFolder(folderId, targetParentId) {
-    if (folderId === targetParentId) return; // 同じ場所
+    if (folderId === targetParentId) return;
     if (targetParentId !== null && isDescendant(folderId, targetParentId)) {
       alert('親フォルダを自分の子フォルダの中に移動することはできません。');
       return;
@@ -88,7 +90,6 @@
     }
   }
 
-  // ★ フォルダの並べ替え（追加ロジック）
   function reorderFolder(dragId, targetId, position) {
     if (dragId === targetId) return;
     const targetFolder = state.folders.find(f => f.id === targetId);
@@ -103,18 +104,114 @@
     if (dragIndex === -1) return;
     
     const dragFolder = state.folders[dragIndex];
-    dragFolder.parentId = targetFolder.parentId; // ドロップ先と同じ階層にする
+    dragFolder.parentId = targetFolder.parentId;
 
-    state.folders.splice(dragIndex, 1); // 元の位置から削除
+    state.folders.splice(dragIndex, 1);
 
     let newTargetIndex = state.folders.findIndex(f => f.id === targetId);
     if (position === 'after') newTargetIndex++;
 
-    state.folders.splice(newTargetIndex, 0, dragFolder); // 新しい位置に挿入
+    state.folders.splice(newTargetIndex, 0, dragFolder);
   }
 
   // ─────────────────────────────
-  // 描画ロジック
+  // ★ 修正・追加：付箋（Keep）リストの描画と絞り込み
+  // ─────────────────────────────
+  let currentFilterColor = 'all'; // ❶ 現在絞り込んでいる色
+
+  // 色フィルターボタンの設定
+  const filterDots = document.querySelectorAll('.filter-dot');
+  filterDots.forEach(dot => {
+    dot.addEventListener('click', () => {
+      filterDots.forEach(d => d.classList.remove('active'));
+      dot.classList.add('active');
+      currentFilterColor = dot.dataset.color;
+      loadAndRenderNotes(); // フィルターを変えたら再描画
+    });
+  });
+
+  function loadAndRenderNotes() {
+    if (!el.nsList) return;
+    
+    let notes = [];
+    try { 
+      notes = JSON.parse(localStorage.getItem(KEEP_NOTES_KEY)) || []; 
+    } catch(e) {}
+
+    el.nsList.innerHTML = '';
+    
+    // ❶ 選択されている色で付箋を絞り込み
+    let filteredNotes = notes;
+    if (currentFilterColor !== 'all') {
+      filteredNotes = notes.filter(n => (n.color || '#fff9c4') === currentFilterColor);
+    }
+
+    if (filteredNotes.length === 0) {
+      el.nsList.innerHTML = '<div class="ns-empty">該当する付箋はありません。</div>';
+      return;
+    }
+
+    // 新しいものを上に表示
+    const reversedNotes = [...filteredNotes].reverse();
+
+    reversedNotes.forEach(note => {
+      if (!note.text || !note.text.trim()) return;
+
+      const div = document.createElement('div');
+      div.className = 'ns-note';
+      div.style.backgroundColor = note.color || '#fff9c4';
+      
+      const textDiv = document.createElement('div');
+      textDiv.innerText = note.text;
+      div.appendChild(textDiv);
+
+      // ❷ 削除ボタンの追加
+      const delBtn = document.createElement('button');
+      delBtn.className = 'ns-btn-delete';
+      delBtn.innerHTML = '×';
+      delBtn.title = 'この付箋を削除';
+      delBtn.onclick = () => {
+        if (confirm('この付箋を削除しますか？')) {
+          const allNotes = JSON.parse(localStorage.getItem(KEEP_NOTES_KEY)) || [];
+          const newNotes = allNotes.filter(n => n.id !== note.id);
+          localStorage.setItem(KEEP_NOTES_KEY, JSON.stringify(newNotes));
+          loadAndRenderNotes(); // サイドバーを再描画
+          
+          // 付箋ボード(keep.js)などが開いていた場合のために更新を通知
+          try { window.parent.postMessage({ type: 'D_NOTES_UPDATED' }, '*'); } catch(e){}
+        }
+      };
+      div.appendChild(delBtn);
+
+      el.nsList.appendChild(div);
+    });
+  }
+
+  // 右上のトグルボタンが押された時の処理
+  if (el.toggleNotesBtn && el.notesSidebar) {
+    el.toggleNotesBtn.addEventListener('click', () => {
+      const isOpen = el.notesSidebar.classList.contains('open');
+      if (isOpen) {
+        el.notesSidebar.classList.remove('open');
+        el.toggleNotesBtn.classList.remove('active');
+      } else {
+        el.notesSidebar.classList.add('open');
+        el.toggleNotesBtn.classList.add('active');
+        loadAndRenderNotes();
+      }
+    });
+  }
+
+  // 他のタブ（クイックメモや付箋ボード）で付箋が更新されたらリアルタイム反映
+  window.addEventListener('storage', (ev) => {
+    if (ev.key === KEEP_NOTES_KEY && el.notesSidebar.classList.contains('open')) {
+      loadAndRenderNotes();
+    }
+  });
+
+
+  // ─────────────────────────────
+  // 描画ロジック (既存)
   // ─────────────────────────────
   function render() {
     renderFolders();
@@ -143,7 +240,6 @@
         };
         div.ondragend = () => { div.classList.remove('dragging'); };
 
-        // ★ ドラッグオーバー時の処理（上・中・下の判定を追加）
         div.ondragover = (e) => { 
           e.preventDefault(); 
           e.stopPropagation(); 
@@ -153,11 +249,11 @@
           const y = e.clientY;
           
           if (y < rect.top + rect.height * 0.25) {
-            div.classList.add('drag-over-top'); // 上25%なら前に挿入
+            div.classList.add('drag-over-top');
           } else if (y > rect.bottom - rect.height * 0.25) {
-            div.classList.add('drag-over-bottom'); // 下25%なら後ろに挿入
+            div.classList.add('drag-over-bottom');
           } else {
-            div.classList.add('drag-over'); // 真ん中なら子フォルダにする
+            div.classList.add('drag-over');
           }
         };
         
@@ -166,12 +262,10 @@
           div.classList.remove('drag-over', 'drag-over-top', 'drag-over-bottom'); 
         };
         
-        // ★ ドロップ時の処理
         div.ondrop = (e) => {
           e.preventDefault();
           e.stopPropagation();
           
-          const isTop = div.classList.contains('drag-over-top');
           const isBottom = div.classList.contains('drag-over-bottom');
           const isChild = div.classList.contains('drag-over');
           
@@ -183,10 +277,10 @@
           } else if (data.startsWith('folder:')) {
             const dragId = data.replace('folder:', '');
             if (isChild) {
-              moveFolder(dragId, f.id); // 子フォルダに入れる
+              moveFolder(dragId, f.id); 
               f.isOpen = true;
             } else {
-              reorderFolder(dragId, f.id, isBottom ? 'after' : 'before'); // 順番を入れ替える
+              reorderFolder(dragId, f.id, isBottom ? 'after' : 'before');
             }
             saveData(); render();
           }

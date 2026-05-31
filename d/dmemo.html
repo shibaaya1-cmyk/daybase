@@ -26,12 +26,13 @@
     }
     * { box-sizing: border-box; }
 
-    #app { display: flex; width: 100%; height: 100%; }
+    #app { display: flex; width: 100%; height: 100%; position: relative; overflow: hidden; }
 
-    /* サイドバー */
+    /* 左サイドバー（フォルダリスト） */
     #sidebar {
       width: 240px; flex: 0 0 240px; background: var(--bg);
       border-right: 1px solid var(--line); display: flex; flex-direction: column;
+      z-index: 10;
     }
     .side-header {
       padding: 12px; font-weight: 700; color: #1e293b;
@@ -57,7 +58,6 @@
     .folder-item:hover { background: #e2e8f0; }
     .folder-item.active { background: var(--accent); color: #fff; }
     
-    /* フォルダのドラッグ＆ドロップ時のスタイル */
     .folder-item.drag-over { background: #e2e8f0; box-shadow: inset 0 0 0 2px var(--accent); }
     .folder-item.drag-over-top { background: #e2e8f0; box-shadow: inset 0 3px 0 var(--accent); }
     .folder-item.drag-over-bottom { background: #e2e8f0; box-shadow: inset 0 -3px 0 var(--accent); }
@@ -76,12 +76,16 @@
     .folder-item.active .f-btn:hover { color: #fff; }
 
     /* メインエリア */
-    #main { flex: 1; display: flex; flex-direction: column; min-width: 0; background: var(--card); }
+    #main { 
+      flex: 1; display: flex; flex-direction: column; min-width: 0; background: var(--card); position: relative; 
+      transition: all 0.3s;
+    }
 
     /* タブバー */
     .tab-bar {
       display: flex; background: #f1f5f9; border-bottom: 1px solid var(--line);
       padding: 6px 6px 0 6px; gap: 4px; overflow-x: auto; scrollbar-width: none;
+      padding-right: 46px; /* 右上のボタン用に余白を空ける */
     }
     .tab-bar::-webkit-scrollbar { display: none; }
     
@@ -95,7 +99,6 @@
     .tab.active { background: var(--card); color: var(--accent); border-color: var(--line); font-weight: 600; }
     .tab.active::after { content: ''; position: absolute; bottom: -1px; left: 0; right: 0; height: 2px; background: var(--card); }
     
-    /* ★ タブの並べ替え時のガイド用スタイル */
     .tab.dragging { opacity: 0.4; background: #cbd5e1; }
     .tab.drag-over-left { box-shadow: inset 3px 0 0 var(--accent); }
     .tab.drag-over-right { box-shadow: inset -3px 0 0 var(--accent); }
@@ -121,6 +124,110 @@
     .editor-title { font-size: 18px; font-weight: 700; color: #1e293b; border: none; border-bottom: 2px solid transparent; padding: 4px 0; margin-bottom: 12px; outline: none; transition: 0.2s; }
     .editor-title:focus { border-bottom-color: var(--line); }
     .editor-content { flex: 1; border: none; resize: none; outline: none; font-family: inherit; font-size: 14px; line-height: 1.6; color: var(--text); background: transparent; padding: 0; }
+
+    /* ★ 修正・追加：右サイドバー（付箋リスト）関連のスタイル */
+    #toggleNotesBtn {
+      position: absolute;
+      top: 6px;
+      right: 6px;
+      width: 32px;
+      height: 28px;
+      border-radius: 6px;
+      background: #fff;
+      border: 1px solid var(--line);
+      color: var(--muted);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 50;
+      transition: 0.2s;
+    }
+    #toggleNotesBtn:hover, #toggleNotesBtn.active {
+      background: var(--hover);
+      color: var(--accent);
+      border-color: var(--accent);
+    }
+
+    /* 押し出し式（Flex）に変更したサイドバー */
+    #notesSidebar {
+      width: 0; /* 初期状態は隠す */
+      flex: 0 0 0;
+      background: #fdfdfd;
+      border-left: 1px solid var(--line);
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    #notesSidebar.open {
+      width: 260px;
+      flex: 0 0 260px;
+    }
+
+    /* 中の要素がアニメーション中に潰れないよう幅を固定 */
+    .ns-header, .ns-filters, #nsList { width: 260px; box-sizing: border-box; }
+
+    .ns-header {
+      padding: 10px 12px;
+      font-weight: 700;
+      color: #1e293b;
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    
+    /* ❶色絞り込みUI */
+    .ns-filters {
+      display: flex; gap: 8px; padding: 8px 12px;
+      border-bottom: 1px solid var(--line);
+      background: #f8fafc;
+    }
+    .filter-dot {
+      width: 16px; height: 16px; border-radius: 50%; cursor: pointer;
+      border: 2px solid transparent; box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+      transition: transform 0.2s, border-color 0.2s;
+    }
+    .filter-dot.active { border-color: var(--accent); transform: scale(1.2); }
+    .filter-dot[data-color="all"] {
+      display: flex; align-items: center; justify-content: center;
+      font-size: 8px; font-weight: 700; color: #64748b; background: #fff; border: 1px solid #cbd5e1;
+    }
+
+    #nsList {
+      flex: 1;
+      overflow-y: auto;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    /* ❷付箋と削除ボタンのスタイル */
+    .ns-note {
+      position: relative;
+      border: 1px solid rgba(0,0,0,0.05);
+      border-radius: 4px;
+      padding: 10px 24px 10px 10px; /* 右側に削除ボタンの余白 */
+      font-size: 12px;
+      color: #333;
+      white-space: pre-wrap;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+      line-height: 1.5;
+    }
+    .ns-btn-delete {
+      position: absolute; top: 4px; right: 4px;
+      width: 20px; height: 20px; border-radius: 50%; border: none; background: rgba(0,0,0,0.05);
+      color: #666; font-size: 12px; display: flex; align-items: center; justify-content: center;
+      cursor: pointer; opacity: 0; transition: 0.2s;
+    }
+    .ns-note:hover .ns-btn-delete { opacity: 1; }
+    .ns-btn-delete:hover { background: rgba(255,0,0,0.1); color: #dc2626; }
+    
+    .ns-empty {
+      color: var(--muted); font-size: 12px; text-align: center; padding-top: 20px;
+    }
   </style>
 </head>
 <body>
@@ -134,15 +241,37 @@
     </aside>
 
     <main id="main">
+      <button id="toggleNotesBtn" title="付箋リストを開閉">📝</button>
+
       <div class="tab-bar" id="tabBar"></div>
+      
       <div class="editor-wrap" id="editorWrap" style="display: none;">
         <input type="text" id="memoTitle" class="editor-title" placeholder="メモのタイトル..." />
         <textarea id="memoContent" class="editor-content" placeholder="ここにメモを入力..."></textarea>
       </div>
+      
       <div class="no-selection" id="noSelection">
         フォルダとメモを選択してください
       </div>
     </main>
+
+    <div id="notesSidebar">
+      <div class="ns-header"><span>📝</span> キープ中の付箋</div>
+      
+      <div class="ns-filters" id="nsFilters">
+        <div class="filter-dot active" data-color="all" title="すべて表示">ALL</div>
+        <div class="filter-dot" data-color="#fff9c4" style="background:#fff9c4;" title="黄色"></div>
+        <div class="filter-dot" data-color="#fce4ec" style="background:#fce4ec;" title="ピンク"></div>
+        <div class="filter-dot" data-color="#f3e5f5" style="background:#f3e5f5;" title="紫"></div>
+        <div class="filter-dot" data-color="#e3f2fd" style="background:#e3f2fd;" title="青"></div>
+        <div class="filter-dot" data-color="#e0f7fa" style="background:#e0f7fa;" title="水色"></div>
+        <div class="filter-dot" data-color="#e8f5e9" style="background:#e8f5e9;" title="緑"></div>
+        <div class="filter-dot" data-color="#f1f8e9" style="background:#f1f8e9;" title="黄緑"></div>
+      </div>
+
+      <div id="nsList"></div>
+    </div>
+
   </div>
 
   <script src="dmemo.js"></script>
