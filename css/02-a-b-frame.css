@@ -61,7 +61,12 @@
   .b-panel{ width:100%; height:100%; display:none; overflow:hidden; }
   .b-panel.show{ display:block; }
 
-  #bPanelVideos{ overflow: visible; background: #fff; }
+  #bPanelVideos { 
+  overflow-y: auto !important; 
+  overflow-x: hidden !important;
+  background: #fff; 
+  height: 100% !important; 
+}
   /* === 動画ブックマーク リスト (Bフレーム) === */
   #bPanelVideos .vb-list {
     padding: 10px;
