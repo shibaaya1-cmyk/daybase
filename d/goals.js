@@ -233,6 +233,89 @@
       }
       els.treeBody.appendChild(tr);
 
+      // ★ ツリーのD&D処理 ★
+      tr.draggable = true;
+      tr.ondragstart = (e) => {
+        e.dataTransfer.setData('tree/id', node.id);
+      };
+      
+      tr.ondragover = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const rect = tr.getBoundingClientRect();
+        const y = e.clientY - rect.top;
+        tr.classList.remove('drag-above', 'drag-below', 'drag-inside');
+        
+        if (y < rect.height * 0.25) {
+          tr.classList.add('drag-above'); // 上に挿入
+        } else if (y > rect.height * 0.75) {
+          tr.classList.add('drag-below'); // 下に挿入
+        } else {
+          tr.classList.add('drag-inside'); // 子として追加
+        }
+      };
+
+      tr.ondragleave = (e) => {
+        tr.classList.remove('drag-above', 'drag-below', 'drag-inside');
+      };
+
+      tr.ondrop = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        tr.classList.remove('drag-above', 'drag-below', 'drag-inside');
+        
+        const draggedId = e.dataTransfer.getData('tree/id');
+        if (!draggedId || draggedId === node.id) return;
+        
+        // 自身の子タスクの中に移動させないための循環参照チェック
+        let curr = getIssue(node.id);
+        while(curr) {
+          if (curr.id === draggedId) {
+            alert('自身やその子タスクの中には移動できません。');
+            return;
+          }
+          curr = getIssue(curr.parentId);
+        }
+
+        const draggedIssue = getIssue(draggedId);
+        if(!draggedIssue) return;
+        
+        const oldParentId = draggedIssue.parentId;
+        let targetParentId = null;
+        
+        const rect = tr.getBoundingClientRect();
+        const y = e.clientY - rect.top;
+        
+        // 一度配列から削除して、新しく挿入し直すことで並び順を管理
+        state.issues = state.issues.filter(i => i.id !== draggedId);
+        let targetIndex = state.issues.findIndex(i => i.id === node.id);
+        
+        if (y < rect.height * 0.25) {
+          // ターゲットの上（兄弟）に挿入
+          targetParentId = node.parentId;
+          state.issues.splice(targetIndex, 0, draggedIssue);
+        } else if (y > rect.height * 0.75) {
+          // ターゲットの下（兄弟）に挿入
+          targetParentId = node.parentId;
+          state.issues.splice(targetIndex + 1, 0, draggedIssue);
+        } else {
+          // ターゲットの子として追加
+          targetParentId = node.id;
+          state.issues.splice(targetIndex + 1, 0, draggedIssue);
+          const tNode = getIssue(node.id);
+          if (tNode) tNode.isOpen = true; // ドロップされた親のツリーを自動展開
+        }
+
+        draggedIssue.parentId = targetParentId;
+        
+        // 移動前と移動後の親のステータス・期間を再計算
+        updateParent(oldParentId);
+        updateParent(draggedIssue.parentId);
+        
+        saveData();
+        render();
+      };
+
       if(node.isOpen) {
         node.children.forEach(c => drawNode(c, depth + 1));
       }
